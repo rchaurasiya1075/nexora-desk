@@ -19,7 +19,7 @@ const TABS: Array<{ id: "all" | AssetClass; label: string }> = [
   { id: "shares", label: ASSET_LABEL.shares },
 ];
 
-function MarketsPage() {
+export function MarketsPage() {
   useEffect(() => {
     market.start();
   }, []);

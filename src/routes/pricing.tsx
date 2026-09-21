@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/utils";
 
 export const Route = createFileRoute("/pricing")({ component: PricingPage });
 
-function PricingPage() {
+export function PricingPage() {
   useEffect(() => {
     market.start();
   }, []);

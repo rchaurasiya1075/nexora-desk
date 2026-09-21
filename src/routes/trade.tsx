@@ -7,7 +7,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/trade")({ component: TradePage });
 
-function TradePage() {
+export function TradePage() {
   const { isPending } = useCurrentUserState();
   if (isPending) {
     return <div className="min-h-dvh bg-bg text-fg" />;

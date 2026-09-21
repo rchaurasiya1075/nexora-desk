@@ -5,7 +5,7 @@ import { ARTICLES } from "@/lib/news";
 
 export const Route = createFileRoute("/news")({ component: NewsPage });
 
-function NewsPage() {
+export function NewsPage() {
   return (
     <div className="min-h-dvh bg-bg text-fg">
       <SiteHeader />

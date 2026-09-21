@@ -10,7 +10,7 @@ import { formatMoney } from "@/lib/utils";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
 
-function AccountPage() {
+export function AccountPage() {
   const { user, isPending } = useCurrentUserState();
   const hydrateFromServer = useTradeStore((s) => s.hydrateFromServer);
   const balance = useTradeStore((s) => s.balance);

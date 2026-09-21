@@ -21,7 +21,7 @@ import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({ component: Home });
 
-function Home() {
+export function Home() {
   useEffect(() => {
     market.start();
   }, []);

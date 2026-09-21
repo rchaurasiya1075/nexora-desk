@@ -3,9 +3,9 @@ import { LoginForm } from "@/components/auth/login-form";
 import { Logo } from "@/components/layout/site-header";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
-export const Route = createFileRoute("/login")({ component: Login });
+export const Route = createFileRoute("/login")({ component: LoginPage });
 
-function Login() {
+export function LoginPage() {
   const { user, isPending } = useCurrentUserState();
   if (isPending) {
     return (

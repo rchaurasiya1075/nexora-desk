@@ -7,7 +7,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
-function AdminPage() {
+export function AdminPage() {
   const { isPending } = useCurrentUserState();
   if (isPending) {
     return (
