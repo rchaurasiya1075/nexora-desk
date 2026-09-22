@@ -1,39 +1,35 @@
 # Nexora
 
-Paper trading desk (forex, gold, crypto, indices) with **login → deposit request → admin approval → trade**.
+Paper trading desk — live FX/crypto/gold anchors, Firebase login, deposits, admin desk.
 
-**Live site:** https://rchaurasiya1075.github.io/nexora-desk/
+**Live site (open this):** [https://rchaurasiya1075.github.io/nexora-desk/](https://rchaurasiya1075.github.io/nexora-desk/)
 
-## Flow
+Web trader: [https://rchaurasiya1075.github.io/nexora-desk/#/trade](https://rchaurasiya1075.github.io/nexora-desk/#/trade)
 
-1. Trader signs in (email on the GitHub live desk; Google/X in the hosted preview).
-2. Trader picks UPI / QR / bank / SWIFT, sends the amount, pastes UTR.
-3. Admin approves. Paper USD is credited to that user id.
-4. Trader opens the web trader.
+This is a Nexora-branded **demo / paper** desk. It is not FOREX.com and not a licensed broker.
 
-This is a **demo desk**, not a licensed broker. Admin rails (UPI ID, QR, bank details) are instructions you configure. There is no payment gateway.
+## Firebase (`nexora-bb654`)
 
-## Admin
+Do this once in [Firebase Console](https://console.firebase.google.com/project/nexora-bb654):
 
-First signed-in operator opens **Admin** and claims the desk.
+1. **Authentication → Get started → Email/Password → Enable**
+2. **Firestore Database → Create** (production mode is fine; rules are in `firestore.rules`)
+3. **Authentication → Settings → Authorized domains** add:
+   - `rchaurasiya1075.github.io`
+   - your custom domain (after you buy it)
+4. First signed-in account can **claim admin** on `/#/admin`
 
-- **Deposits** — approve / reject; optional USD override
-- **Users** — credit / debit, freeze, promote admin
-- **Rails** — currencies (units per 1 USD) and payment methods
+Web config lives in `src/lib/firebase/config.ts`.
 
-On the GitHub live site, accounts live in this browser (so you can sign up a trader, sign out, sign up/claim admin, then approve). Firebase can replace that when you send the key.
+## Custom domain (GoDaddy)
 
-## Run
+After you buy the domain, send me the name. Until then:
 
-```bash
-npm install
-npm run dev
-```
-
-Auth + database flags live in `.grok/app-env.json`. `npm run build:pages` publishes the GitHub live desk.
-
-Firebase is **not wired**. Send the Firebase key when you want that added; Better Auth + Postgres already handles accounts on the hosted preview.
-
-## Stack
-
-TanStack Start, React 19, Tailwind v4, Better Auth, Postgres / PGLite.
+1. GoDaddy → DNS → **CNAME**: `www` → `rchaurasiya1075.github.io`
+2. GoDaddy → DNS → **A** records for `@`:
+   - `185.199.108.153`
+   - `185.199.109.153`
+   - `185.199.110.153`
+   - `185.199.111.153`
+3. GitHub repo **nexora-desk** → Settings → Pages → Custom domain → `www.yourdomain.com`
+4. Add `www.yourdomain.com` and `yourdomain.com` under Firebase authorized domains

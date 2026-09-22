@@ -7,9 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 const ROOT = path.resolve(".");
 
 const SHIMS: Record<string, string> = {
-  "src/lib/ops/api.ts": "src/lib/ops/local-api.ts",
-  "src/lib/trading/account-api.ts": "src/lib/trading/account-local.ts",
-  "src/lib/auth/client.ts": "src/lib/auth/pages-client.ts",
+  "src/lib/market/quotes.ts": "src/lib/market/quotes-pages.ts",
 };
 
 function pagesShims(): Plugin {
@@ -32,7 +30,7 @@ function pagesShims(): Plugin {
 }
 
 export default defineConfig({
-  base: "/nexora-desk/",
+  base: "./",
   root: path.resolve("pages"),
   publicDir: path.resolve("public"),
   envDir: ROOT,

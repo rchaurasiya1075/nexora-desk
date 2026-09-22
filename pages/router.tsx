@@ -7,6 +7,8 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
+import { FirebaseAuthProvider } from "@/lib/firebase/session";
+import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "sonner";
 import { Home } from "@/routes/index";
 import { TradePage } from "@/routes/trade";
@@ -20,18 +22,21 @@ import { PricingPage } from "@/routes/pricing";
 const rootRoute = createRootRoute({
   component: () => (
     <AuthProvider>
-      <Outlet />
-      <Toaster
-        theme="dark"
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            background: "#121316",
-            border: "1px solid rgba(242,241,237,0.12)",
-            color: "#F2F1ED",
-          },
-        }}
-      />
+      <FirebaseAuthProvider>
+        <PreviewHostBridge />
+        <Outlet />
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "#121316",
+              border: "1px solid rgba(242,241,237,0.12)",
+              color: "#F2F1ED",
+            },
+          }}
+        />
+      </FirebaseAuthProvider>
     </AuthProvider>
   ),
 });

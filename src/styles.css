@@ -1,5 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap");
 @import "tailwindcss";
+@source "./**/*.{ts,tsx}";
+@source "../pages/**/*.{html,ts,tsx}";
 
 @theme {
   --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -16,11 +18,15 @@
   --color-border-strong: color-mix(in oklab, var(--color-fg) 22%, transparent);
   --color-accent: #c5cad3;
   --color-accent-fg: #09090b;
-  --color-buy: #3d9a78;
+  --color-buy: #2f9e6b;
   --color-buy-fg: #04150f;
-  --color-sell: #c45b66;
+  --color-sell: #d05660;
   --color-sell-fg: #1a0609;
   --color-ring: #c5cad3;
+  --color-desk: #0b1118;
+  --color-desk-fg: #f2f1ed;
+  --color-desk-muted: color-mix(in oklab, var(--color-desk-fg) 48%, transparent);
+  --color-desk-line: color-mix(in oklab, var(--color-desk-fg) 14%, transparent);
 
   --radius-xs: 4px;
   --radius-sm: 8px;
