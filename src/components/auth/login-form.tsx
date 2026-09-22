@@ -1,16 +1,22 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { useDeskSession } from "@/lib/firebase/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function LoginForm({ callbackURL = "/trade" }: { callbackURL?: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const { signInEmail, signUpEmail, enterDemo } = useDeskSession();
+  const [mode, setMode] = useState<"in" | "up">("up");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  async function go() {
+    await router.invalidate();
+    await router.navigate({ to: callbackURL });
+  }
 
   async function onEmail(e: FormEvent) {
     e.preventDefault();
@@ -18,18 +24,11 @@ export function LoginForm({ callbackURL = "/trade" }: { callbackURL?: string }) 
     setPending(true);
     try {
       if (mode === "up") {
-        const res = await authClient.signUp.email({
-          email,
-          password,
-          name: email.split("@")[0] || "Trader",
-        });
-        if (res.error) throw new Error(res.error.message || "Could not create account.");
+        await signUpEmail(email, password, email.split("@")[0] || "Trader");
       } else {
-        const res = await authClient.signIn.email({ email, password });
-        if (res.error) throw new Error(res.error.message || "Could not sign in.");
+        await signInEmail(email, password);
       }
-      await router.invalidate();
-      await router.navigate({ to: callbackURL });
+      await go();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
     } finally {
@@ -37,29 +36,35 @@ export function LoginForm({ callbackURL = "/trade" }: { callbackURL?: string }) 
     }
   }
 
-  if (!authEnabled) {
-    return <p className="text-sm text-muted">Sign-in is disabled.</p>;
+  async function onDemo() {
+    setError(null);
+    setPending(true);
+    try {
+      await enterDemo();
+      await go();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open the desk.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
     <div className="w-full max-w-sm space-y-4">
-      <div className="space-y-2">
-        {GROK_PROVIDERS.map((p) => (
-          <Button
-            key={p.providerId}
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => signIn(p.providerId, { callbackURL })}
-          >
-            Continue with {p.label}
-          </Button>
-        ))}
-      </div>
-      <div className="flex items-center gap-3 text-[11px] uppercase tracking-wide text-subtle">
-        <span className="h-px flex-1 bg-border" />
-        Email
-        <span className="h-px flex-1 bg-border" />
+      <Button
+        type="button"
+        className="w-full"
+        size="lg"
+        disabled={pending}
+        onClick={() => void onDemo()}
+      >
+        {pending ? "Opening desk…" : "Open paper desk — $10,000"}
+      </Button>
+      <p className="text-center text-[12px] text-subtle">
+        Instant web trader. No Firebase click required.
+      </p>
+      <div className="relative py-1 text-center text-[11px] uppercase tracking-wide text-subtle">
+        <span className="bg-bg px-2">or email</span>
       </div>
       <form onSubmit={onEmail} className="space-y-3">
         <label className="block">
@@ -78,13 +83,13 @@ export function LoginForm({ callbackURL = "/trade" }: { callbackURL?: string }) 
             type="password"
             autoComplete={mode === "up" ? "new-password" : "current-password"}
             required
-            minLength={8}
+            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
         {error && <p className="text-sm text-sell">{error}</p>}
-        <Button type="submit" className="w-full" disabled={pending}>
+        <Button type="submit" className="w-full" variant="outline" disabled={pending}>
           {pending ? "Please wait…" : mode === "up" ? "Create account" : "Sign in"}
         </Button>
       </form>
@@ -98,6 +103,18 @@ export function LoginForm({ callbackURL = "/trade" }: { callbackURL?: string }) 
       >
         {mode === "in" ? "New here? Create an account" : "Already registered? Sign in"}
       </button>
+      <p className="text-center text-[11px] text-subtle">
+        Shared login across devices needs{" "}
+        <a
+          className="underline hover:text-fg"
+          href="https://console.firebase.google.com/project/nexora-bb654/authentication/providers"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Email/Password enabled
+        </a>{" "}
+        on nexora-bb654.
+      </p>
     </div>
   );
 }

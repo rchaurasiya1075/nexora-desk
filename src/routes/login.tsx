@@ -1,12 +1,12 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { LoginForm } from "@/components/auth/login-form";
 import { Logo } from "@/components/layout/site-header";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { useDeskSession } from "@/lib/firebase/session";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
 export function LoginPage() {
-  const { user, isPending } = useCurrentUserState();
+  const { user, isPending } = useDeskSession();
   if (isPending) {
     return (
       <main className="grid min-h-dvh place-items-center bg-bg text-fg">
@@ -21,8 +21,8 @@ export function LoginPage() {
         <Logo />
         <h1 className="mt-8 font-display text-4xl">Sign in to trade</h1>
         <p className="mt-3 text-sm text-muted">
-          Google, X, or email. After login, submit UPI/bank details. An admin
-          credits paper USD, then you trade. Your book stays on this account.
+          Open the paper desk instantly, or create an email account. First
+          account on this browser is admin and starts with $10,000 paper.
         </p>
         <div className="mt-8">
           <LoginForm callbackURL="/trade" />

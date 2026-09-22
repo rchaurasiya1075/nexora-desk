@@ -6,7 +6,7 @@ import type {
   PaymentDetails,
   PaymentMethod,
 } from "@/lib/ops/types";
-import type { AccountBook, LedgerRow } from "@/lib/trading/account-local";
+import type { AccountBook, LedgerRow } from "@/lib/firebase/account-types";
 
 const DESK_KEY = "nexora.desk.v1";
 const SESSION_KEY = "nexora.session.v1";
@@ -185,7 +185,10 @@ export async function hashPassword(password: string): Promise<string> {
 export function getSessionUserId(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.sessionStorage.getItem(SESSION_KEY);
+    return (
+      window.localStorage.getItem(SESSION_KEY) ||
+      window.sessionStorage.getItem(SESSION_KEY)
+    );
   } catch {
     return null;
   }
@@ -194,8 +197,13 @@ export function getSessionUserId(): string | null {
 export function setSessionUserId(id: string | null) {
   if (typeof window === "undefined") return;
   try {
-    if (id) window.sessionStorage.setItem(SESSION_KEY, id);
-    else window.sessionStorage.removeItem(SESSION_KEY);
+    if (id) {
+      window.localStorage.setItem(SESSION_KEY, id);
+      window.sessionStorage.setItem(SESSION_KEY, id);
+    } else {
+      window.localStorage.removeItem(SESSION_KEY);
+      window.sessionStorage.removeItem(SESSION_KEY);
+    }
   } catch {
     /* ignore */
   }
@@ -223,6 +231,52 @@ export function requireAdmin(): LocalUser {
 
 export function uid(prefix = "u") {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
+}
+
+export async function localRegister(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<LocalUser> {
+  const em = email.trim().toLowerCase();
+  if (!em.includes("@")) throw new Error("Enter a valid email.");
+  if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+  const hash = await hashPassword(password);
+  const label = (name || em.split("@")[0] || "Trader").slice(0, 40);
+  const created: LocalUser = {
+    id: uid("u"),
+    name: label,
+    email: em,
+    passwordHash: hash,
+    createdAt: new Date().toISOString(),
+  };
+  mutateDesk((desk) => {
+    if (desk.users.some((u) => u.email === em)) {
+      throw new Error("That email is already registered.");
+    }
+    desk.users.push(created);
+    const book = ensureAccount(created.id, desk);
+    if (book.balance <= 0) {
+      book.balance = 10_000;
+      appendLedger(desk, created.id, "credit", 10_000, "Paper demo credit");
+    }
+    if (desk.staff.length === 0) desk.staff.push(created.id);
+  });
+  setSessionUserId(created.id);
+  return created;
+}
+
+export async function localLogin(email: string, password: string): Promise<LocalUser> {
+  const em = email.trim().toLowerCase();
+  const hash = await hashPassword(password);
+  const user = loadDesk().users.find((u) => u.email === em);
+  if (!user || user.passwordHash !== hash) throw new Error("Email or password is wrong.");
+  setSessionUserId(user.id);
+  return user;
+}
+
+export function localSignOut() {
+  setSessionUserId(null);
 }
 
 export type { AccountStatus, MethodKind, PaymentDetails };

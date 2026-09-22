@@ -21,11 +21,11 @@ import {
 
 const KINDS = new Set<MethodKind>(["upi", "qr", "bank", "swift"]);
 
-function dataOf<T>(input?: { data: T } | T): T {
+function dataOf<T>(input?: { data?: T } | T): T {
   if (input && typeof input === "object" && "data" in (input as object)) {
-    return (input as { data: T }).data;
+    return ((input as { data?: T }).data ?? ({} as T));
   }
-  return input as T;
+  return (input ?? ({} as T)) as T;
 }
 
 export async function getMyOps(): Promise<MeOps> {
