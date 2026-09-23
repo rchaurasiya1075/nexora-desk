@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /desk/meta {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.staff || resource.data.staff.size() == 0
+      );
+      allow delete: if false;
+    }
+    match /desk/markets {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff;
+    }
+    match /desk/audit/{id} {
+      allow read: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff;
+      allow create: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff;
+      allow update, delete: if false;
+    }
+    match /traders/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (request.auth.uid == uid || request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff);
+    }
+    match /accounts/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff);
+      allow write: if request.auth != null && (request.auth.uid == uid || request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff);
+    }
+    match /deposits/{id} {
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff;
+    }
+    match /ledgers/{uid}/entries/{id} {
+      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff);
+      allow write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/desk/meta).data.staff;
+    }
+  }
+}

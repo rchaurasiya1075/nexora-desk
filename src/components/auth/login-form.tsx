@@ -4,6 +4,31 @@ import { useDeskSession } from "@/lib/firebase/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+const FAIL_KEY = "sikkaaa.admin.fails";
+
+function locked() {
+  try {
+    const raw = sessionStorage.getItem(FAIL_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { n: number; until: number };
+    return parsed.until > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function noteFail() {
+  try {
+    const raw = sessionStorage.getItem(FAIL_KEY);
+    const parsed = raw ? (JSON.parse(raw) as { n: number; until: number }) : { n: 0, until: 0 };
+    const n = parsed.until > Date.now() ? parsed.n : parsed.n + 1;
+    const until = n >= 5 ? Date.now() + 120_000 : 0;
+    sessionStorage.setItem(FAIL_KEY, JSON.stringify({ n: until ? 0 : n, until }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function LoginForm({
   callbackURL = "/trade",
   admin = false,
@@ -14,7 +39,7 @@ export function LoginForm({
   const router = useRouter();
   const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useDeskSession();
   const [mode, setMode] = useState<"in" | "up" | "reset">("in");
-  const [email, setEmail] = useState(admin ? "yuvraj1075" : "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -24,6 +49,10 @@ export function LoginForm({
     e.preventDefault();
     setError(null);
     setNotice(null);
+    if (admin && locked()) {
+      setError("Too many attempts. Wait two minutes, then try again.");
+      return;
+    }
     setPending(true);
     try {
       if (mode === "reset") {
@@ -41,6 +70,7 @@ export function LoginForm({
       await router.invalidate();
       await router.navigate({ to: callbackURL });
     } catch (err) {
+      if (admin) noteFail();
       setError(err instanceof Error ? err.message : "Sign-in failed.");
     } finally {
       setPending(false);

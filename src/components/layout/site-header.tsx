@@ -15,11 +15,12 @@ const LINKS = [
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 text-fg">
-      <span className="flex size-8 items-center justify-center rounded-sm bg-fg text-bg font-display text-lg leading-none">
-        S
+      <span className="relative flex size-8 items-center justify-center rounded-full bg-fg text-bg">
+        <span className="font-display text-lg leading-none">S</span>
+        <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-buy" />
       </span>
       {!compact && (
-        <span className="font-display text-xl tracking-tight">Sikkaaa</span>
+        <span className="font-display text-[1.05rem] tracking-[0.22em]">SIKKAAA</span>
       )}
     </Link>
   );
@@ -54,10 +55,10 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
           ))}
           {(ops.isAdmin || ops.canClaim) && (
             <Link
-              to="/admin"
+              to="/admin/login"
               className={cn(
                 "text-sm text-muted transition-colors duration-150 hover:text-fg",
-                pathname === "/admin" && "text-fg",
+                pathname.startsWith("/admin") && "text-fg",
               )}
             >
               Admin
@@ -91,7 +92,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
             ))}
             {(ops.isAdmin || ops.canClaim) && (
               <Link
-                to="/admin"
+                to="/admin/login"
                 onClick={() => setOpen(false)}
                 className="flex h-11 items-center text-sm text-fg"
               >
@@ -115,9 +116,9 @@ export function SiteFooter() {
         <div className="max-w-sm">
           <Logo />
           <p className="mt-4 text-sm text-muted">
-            Sikkaaa is a paper-trading desk for learning global markets. Prices are
-            simulated. Funding is admin-approved paper credit, not a live broker
-            payout.
+            See the price. Take the trade. Sikkaaa is a paper desk for global
+            markets — forex, gold, crypto, indices and shares. Funding is
+            admin-approved paper credit, not a live broker payout.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-8 text-sm">
@@ -144,8 +145,8 @@ export function SiteFooter() {
             <Link to="/login" className="text-muted hover:text-fg">
               Sign in
             </Link>
-            <Link to="/admin" className="text-muted hover:text-fg">
-              Admin
+            <Link to="/admin/login" className="text-muted hover:text-fg">
+              Admin desk
             </Link>
           </div>
         </div>

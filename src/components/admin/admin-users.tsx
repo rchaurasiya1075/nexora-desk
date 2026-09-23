@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { adminCredit, listDeskUsers, setUserAdmin, setUserFrozen } from "@/lib/ops/api";
 import type { DeskUser } from "@/lib/ops/types";
 import { formatMoney } from "@/lib/utils";
-import { useCurrentUser } from "@/lib/auth/use-current-user";
+import { useDeskUser } from "@/lib/firebase/session";
 import { useTradeStore } from "@/lib/trading/store";
 
 export function AdminUsers({ onChange }: { onChange: () => void }) {
-  const me = useCurrentUser();
+  const me = useDeskUser();
   const hydrateFromServer = useTradeStore((s) => s.hydrateFromServer);
   const [rows, setRows] = useState<DeskUser[]>([]);
   const [q, setQ] = useState("");

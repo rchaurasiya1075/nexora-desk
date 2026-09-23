@@ -1,14 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Navigate, useRouterState } from "@tanstack/react-router";
 import { AdminDesk } from "@/components/admin/admin-desk";
-import { LoginForm } from "@/components/auth/login-form";
-import { Logo } from "@/components/layout/site-header";
-import { SignInGate } from "@/lib/firebase/gates";
+import { AdminLoginPage } from "@/routes/admin.login";
 import { useDeskSession } from "@/lib/firebase/session";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 export function AdminPage() {
-  const { isPending } = useDeskSession();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, isPending } = useDeskSession();
+  const onLogin = pathname.endsWith("/login");
   if (isPending) {
     return (
       <div className="grid min-h-dvh place-items-center bg-bg text-fg">
@@ -16,27 +16,7 @@ export function AdminPage() {
       </div>
     );
   }
-  return (
-    <SignInGate fallback={<AdminLocked />}>
-      <AdminDesk />
-    </SignInGate>
-  );
-}
-
-function AdminLocked() {
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-bg px-4 text-fg">
-      <Logo />
-      <h1 className="mt-8 max-w-md text-center font-display text-4xl">Sign in for ops</h1>
-      <p className="mt-3 max-w-md text-center text-sm text-muted">
-        Admin tools are tied to your login.
-      </p>
-      <div className="mt-8">
-        <LoginForm callbackURL="/admin" admin />
-      </div>
-      <Link to="/" className="mt-8 text-sm text-muted hover:text-fg">
-        Back
-      </Link>
-    </div>
-  );
+  if (onLogin) return user ? <Navigate to="/admin" /> : <AdminLoginPage />;
+  if (!user) return <Navigate to="/admin/login" />;
+  return <AdminDesk />;
 }

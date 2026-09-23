@@ -14,6 +14,7 @@ import { Home } from "@/routes/index";
 import { TradePage } from "@/routes/trade";
 import { LoginPage } from "@/routes/login";
 import { AdminPage } from "@/routes/admin";
+import { AdminLoginPage } from "@/routes/admin.login";
 import { AccountPage } from "@/routes/account";
 import { MarketsPage } from "@/routes/markets";
 import { NewsPage } from "@/routes/news";
@@ -49,6 +50,7 @@ const routeTree = rootRoute.addChildren([
   page("/", Home),
   page("/trade", TradePage),
   page("/login", LoginPage),
+  page("/admin/login", AdminLoginPage),
   page("/admin", AdminPage),
   page("/account", AccountPage),
   page("/markets", MarketsPage),
