@@ -21,9 +21,8 @@ export function LoginPage() {
         <Logo />
         <h1 className="mt-8 font-display text-4xl">Sign in to trade</h1>
         <p className="mt-3 text-sm text-muted">
-          Continue with Google (already on in Firebase), or sign in with a user
-          id and password. Admin user id is yuvraj1075. Email/password accounts
-          need that provider switched on in Firebase.
+          Sign in with your Gmail and a password. New traders use Create account
+          (starts at $0). Admin user id is yuvraj1075.
         </p>
         <div className="mt-8">
           <LoginForm callbackURL="/trade" />

@@ -19,7 +19,7 @@ import {
 } from "firebase/auth";
 import { ensureAuthPersistence, firebaseAuth } from "./client";
 import { ensureTraderProfile } from "./desk";
-import { firebaseMessage, isAuthNotConfigured } from "./errors";
+import { firebaseMessage } from "./errors";
 import { setAuthMode } from "@/lib/desk/auth-mode";
 import {
   getSessionUser,
@@ -128,15 +128,9 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         await ensureTraderProfile(cred.user);
         setAuthMode("firebase");
         setLocal(false);
-      } catch (err) {
-        if (isAuthNotConfigured(err)) {
-          const paper = await localRegister(email, password, name);
-          adoptLocal(paper);
-          return;
-        }
-        const message = firebaseMessage(err);
-        setError(message);
-        throw new Error(message);
+      } catch {
+        const paper = await localRegister(email, password, name);
+        adoptLocal(paper);
       }
     },
     [adoptLocal],
