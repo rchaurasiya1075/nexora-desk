@@ -58,7 +58,7 @@ function Hero() {
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 md:grid-cols-[1.15fr_0.85fr] md:py-24">
       <div>
         <p className="stagger-in text-xs uppercase tracking-[0.2em] text-subtle">
-          See the price. Take the trade.
+          Trade Smarter. Move Faster.
         </p>
         <h1 className="stagger-in mt-4 font-display text-[clamp(2.4rem,6vw,4.6rem)] leading-[0.95] text-fg">
           Fast, powerful and

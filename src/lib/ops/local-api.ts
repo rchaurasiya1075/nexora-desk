@@ -202,6 +202,7 @@ export async function listDeskUsers(): Promise<DeskUser[]> {
         name: u.name,
         email: u.email,
         createdAt: u.createdAt,
+        lastLogin: u.lastLogin ?? null,
         balance: book?.balance ?? 0,
         status: book?.status === "frozen" ? "frozen" : "active",
         role: desk.staff.includes(u.id) ? "admin" : "user",

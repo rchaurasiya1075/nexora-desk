@@ -84,7 +84,7 @@ const DEFAULTS: ControlState = {
   support: [],
   settings: {
     siteName: "Sikkaaa",
-    slogan: "See the price. Take the trade.",
+    slogan: "Trade Smarter. Move Faster.",
     timezone: "Asia/Kolkata",
     supportEmail: "supportus@sikkaaa.in",
     inrPerUsd: 83.5,
@@ -106,7 +106,7 @@ function load(): ControlState {
     return {
       ...structuredClone(DEFAULTS),
       ...parsed,
-      settings: { ...DEFAULTS.settings, ...parsed.settings },
+      settings: { ...DEFAULTS.settings, ...parsed.settings, slogan: "Trade Smarter. Move Faster." },
       pins: parsed.pins ?? {},
       priceLog: parsed.priceLog ?? [],
       audit: parsed.audit ?? [],

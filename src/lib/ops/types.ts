@@ -64,6 +64,7 @@ export type DeskUser = {
   name: string;
   email: string;
   createdAt: string;
+  lastLogin: string | null;
   balance: number;
   status: AccountStatus;
   role: "admin" | "user";

@@ -18,6 +18,7 @@ export type LocalUser = {
   username?: string;
   passwordHash: string;
   createdAt: string;
+  lastLogin?: string;
 };
 
 export type DeskState = {
@@ -287,6 +288,7 @@ export async function localRegister(
     email: em,
     passwordHash: hash,
     createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString(),
   };
   mutateDesk((desk) => {
     if (
@@ -311,6 +313,12 @@ export async function localLogin(email: string, password: string): Promise<Local
     (u) => u.email === key || u.username === key,
   );
   if (!user || user.passwordHash !== hash) throw new Error("User id or password is wrong.");
+  const at = new Date().toISOString();
+  mutateDesk((desk) => {
+    const row = desk.users.find((u) => u.id === user.id);
+    if (row) row.lastLogin = at;
+  });
+  user.lastLogin = at;
   setSessionUserId(user.id);
   return user;
 }

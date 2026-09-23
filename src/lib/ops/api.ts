@@ -36,7 +36,34 @@ export async function reviewDeposit(input: Parameters<typeof localApi.reviewDepo
   return api().reviewDeposit(input);
 }
 export async function listDeskUsers() {
-  return api().listDeskUsers();
+  const byId = new Map<string, Awaited<ReturnType<typeof localApi.listDeskUsers>>[number]>();
+  try {
+    for (const user of await localApi.listDeskUsers()) byId.set(user.id, user);
+  } catch {
+    /* viewer is not the local operator */
+  }
+  try {
+    for (const user of await firebaseApi.listVisibleTraders()) {
+      const sameEmail = [...byId.values()].find(
+        (row) => row.email && user.email && row.email.toLowerCase() === user.email.toLowerCase(),
+      );
+      if (sameEmail && sameEmail.id !== user.id) byId.delete(sameEmail.id);
+      const prev = sameEmail && sameEmail.id === user.id ? sameEmail : undefined;
+      byId.set(user.id, {
+        ...user,
+        balance: user.balance || prev?.balance || sameEmail?.balance || 0,
+        openPositions: user.openPositions || prev?.openPositions || sameEmail?.openPositions || 0,
+        pendingDeposits: user.pendingDeposits || prev?.pendingDeposits || sameEmail?.pendingDeposits || 0,
+        role: user.role === "admin" || prev?.role === "admin" || sameEmail?.role === "admin" ? "admin" : "user",
+        lastLogin: user.lastLogin || prev?.lastLogin || sameEmail?.lastLogin || null,
+      });
+    }
+  } catch {
+    /* Firestore rules still private, or the project has no traders yet */
+  }
+  return [...byId.values()].sort((a, b) =>
+    (b.lastLogin || b.createdAt).localeCompare(a.lastLogin || a.createdAt),
+  );
 }
 export async function adminCredit(input: Parameters<typeof localApi.adminCredit>[0]) {
   return api().adminCredit(input);

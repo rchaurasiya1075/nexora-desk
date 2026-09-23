@@ -157,12 +157,17 @@ export async function ensureTraderProfile(user: User) {
       name,
       email,
       createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
       role: "user",
     });
     await setDoc(doc(db, "accounts", user.uid), emptyBook());
     return;
   }
-  await setDoc(ref, { name, email }, { merge: true });
+  await setDoc(
+    ref,
+    { name, email, lastLogin: new Date().toISOString() },
+    { merge: true },
+  );
 }
 
 function requireUid() {
@@ -444,6 +449,7 @@ export async function listDeskUsers(): Promise<DeskUser[]> {
       name: String(data.name || "Trader"),
       email: String(data.email || ""),
       createdAt: String(data.createdAt || ""),
+      lastLogin: data.lastLogin ? String(data.lastLogin) : null,
       balance: Number(book.balance) || 0,
       status: book.status === "frozen" ? "frozen" : "active",
       role: meta.staff.includes(t.id) ? "admin" : "user",
@@ -452,6 +458,42 @@ export async function listDeskUsers(): Promise<DeskUser[]> {
     });
   }
   return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Every signed-in Gmail account. Does not require the viewer to be the Firebase admin. */
+export async function listVisibleTraders(): Promise<DeskUser[]> {
+  const traders = await getDocs(collection(db, "traders"));
+  const rows: DeskUser[] = [];
+  for (const t of traders.docs) {
+    const data = t.data();
+    let balance = 0;
+    let status: AccountStatus = "active";
+    let openPositions = 0;
+    try {
+      const acc = await getDoc(doc(db, "accounts", t.id));
+      if (acc.exists()) {
+        const book = acc.data() as AccountBook;
+        balance = Number(book.balance) || 0;
+        status = book.status === "frozen" ? "frozen" : "active";
+        openPositions = Array.isArray(book.positions) ? book.positions.length : 0;
+      }
+    } catch {
+      /* balance stays hidden until rules allow account reads */
+    }
+    rows.push({
+      id: t.id,
+      name: String(data.name || "Trader"),
+      email: String(data.email || ""),
+      createdAt: String(data.createdAt || ""),
+      lastLogin: data.lastLogin ? String(data.lastLogin) : null,
+      balance,
+      status,
+      role: data.role === "admin" ? "admin" : "user",
+      pendingDeposits: 0,
+      openPositions,
+    });
+  }
+  return rows.sort((a, b) => (b.lastLogin || b.createdAt).localeCompare(a.lastLogin || a.createdAt));
 }
 
 export async function adminCredit(input: {

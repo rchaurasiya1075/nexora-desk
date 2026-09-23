@@ -20,7 +20,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
         <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-buy" />
       </span>
       {!compact && (
-        <span className="font-display text-[1.05rem] tracking-[0.22em]">SIKKAAA</span>
+        <span className="text-[1.15rem] font-bold uppercase tracking-[0.12em]">SIKKAAA</span>
       )}
     </Link>
   );
@@ -116,7 +116,7 @@ export function SiteFooter() {
         <div className="max-w-sm">
           <Logo />
           <p className="mt-4 text-sm text-muted">
-            See the price. Take the trade. Sikkaaa is a paper desk for global
+            Trade Smarter. Move Faster. SIKKAAA is a paper desk for global
             markets — forex, gold, crypto, indices and shares. Funding is
             admin-approved paper credit, not a live broker payout.
           </p>

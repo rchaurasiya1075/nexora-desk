@@ -103,7 +103,7 @@ export function AdminConsole() {
     <div className="flex min-h-dvh bg-[#07080a] text-fg">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-black/40 md:flex">
         <div className="border-b border-white/10 px-4 py-5">
-          <p className="font-display text-lg tracking-[0.22em]">SIKKAAA</p>
+          <p className="text-lg font-bold uppercase tracking-[0.12em]">SIKKAAA</p>
           <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-muted">Admin desk</p>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
@@ -140,7 +140,7 @@ export function AdminConsole() {
             </select>
           </div>
           <p className="hidden text-xs uppercase tracking-[0.18em] text-muted md:block">
-            See the price. Take the trade.
+            Trade Smarter. Move Faster.
           </p>
           <div className="flex items-center gap-3">
             <UserButton />
@@ -242,12 +242,16 @@ function UsersPane({
   return (
     <div>
       <h1 className="font-display text-3xl">Users</h1>
+      <p className="mt-2 text-sm text-muted">{users.length} signed-in account{users.length === 1 ? "" : "s"}</p>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="text-[11px] uppercase tracking-wide text-muted">
             <tr>
               <th className="py-2">User</th>
               <th>Email</th>
+              <th>User id</th>
+              <th>Created</th>
+              <th>Last login</th>
               <th>Balance</th>
               <th>Trades</th>
               <th>Status</th>
@@ -259,6 +263,9 @@ function UsersPane({
               <tr key={u.id} className="border-t border-white/10">
                 <td className="py-2">{u.name}</td>
                 <td>{u.email}</td>
+                <td className="max-w-[140px] truncate font-mono text-[11px]">{u.id}</td>
+                <td>{u.createdAt ? new Date(u.createdAt).toLocaleString("en-IN") : "—"}</td>
+                <td>{u.lastLogin ? new Date(u.lastLogin).toLocaleString("en-IN") : "—"}</td>
                 <td>{formatMoney(u.balance)}</td>
                 <td>{u.openPositions}</td>
                 <td>{u.status === "active" ? "Active" : "Suspended"}</td>
@@ -271,6 +278,9 @@ function UsersPane({
             ))}
           </tbody>
         </table>
+        {!users.length && (
+          <p className="mt-3 text-sm text-muted">No sign-ins yet. A Gmail login writes the profile Firebase can list.</p>
+        )}
       </div>
       {user && (
         <div className="mt-6 max-w-lg rounded-sm border border-white/10 p-4">
@@ -283,6 +293,8 @@ function UsersPane({
             <dd className="truncate">{user.id}</dd>
             <dt className="text-muted">Created</dt>
             <dd>{new Date(user.createdAt).toLocaleString("en-IN")}</dd>
+            <dt className="text-muted">Last login</dt>
+            <dd>{user.lastLogin ? new Date(user.lastLogin).toLocaleString("en-IN") : "—"}</dd>
             <dt className="text-muted">Status</dt>
             <dd>{user.status}</dd>
             <dt className="text-muted">Paper USD</dt>
