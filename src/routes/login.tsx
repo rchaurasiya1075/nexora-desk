@@ -21,8 +21,8 @@ export function LoginPage() {
         <Logo />
         <h1 className="mt-8 font-display text-4xl">Sign in to trade</h1>
         <p className="mt-3 text-sm text-muted">
-          Sign in with your Gmail and a password. New traders use Create account
-          (starts at $0). Admin user id is yuvraj1075.
+          Sign in with Google or your Gmail and password. Forgot password sends a
+          reset link to that Gmail. New accounts start at $0.
         </p>
         <div className="mt-8">
           <LoginForm callbackURL="/trade" />

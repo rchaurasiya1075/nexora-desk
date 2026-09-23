@@ -18,7 +18,7 @@ export const ARTICLES: Article[] = [
     body: [
       "XAU/USD spent the weekend bid after Friday’s 0.6% bounce. COMEX last printed $4,385.90 as US 10-year yields cooled to 5.00% and the dollar index faded its post-Fed spike.",
       "The technical test is straightforward: a daily close above $4,400 opens $4,455, the August swing high. Failure there puts $4,310 back in view — the 20-day volume-weighted average.",
-      "Nexora’s demo gold book is open seven days. Use smaller size into Sunday gaps; the live spread on XAU/USD typically sits around 0.32 on Standard and 0.12 on RAW.",
+      "Sikkaaa’s demo gold book is open seven days. Use smaller size into Sunday gaps; the live spread on XAU/USD typically sits around 0.32 on Standard and 0.12 on RAW.",
     ],
   },
   {

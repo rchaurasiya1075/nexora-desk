@@ -25,14 +25,14 @@ export function PricingPage() {
           This desk is free. A live broker is not.
         </h1>
         <p className="mt-4 max-w-2xl text-muted">
-          Three numbers matter: what Nexora costs (nothing), what a real
+          Three numbers matter: what Sikkaaa costs (nothing), what a real
           FOREX.com-style account costs to open, and what each trade costs in
           spread. All rupee figures use live USD/INR on this desk.
         </p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           <CostCard
-            kicker="Nexora demo"
+            kicker="Sikkaaa demo"
             title="₹0"
             copy="Sign in, request UPI/bank funding, wait for admin approval. Paper USD only. No live withdrawal."
           />
@@ -270,7 +270,7 @@ function IndiaNote() {
           Building a real licensed broker is a different universe: regulatory
           capital (often $1 lakh+ equivalent abroad, far more for a bank-grade
           India licence), liquidity, and a dealing desk. Software alone is the
-          cheap line item. Nexora is the software line item, running as paper.
+          cheap line item. Sikkaaa is the software line item, running as paper.
         </p>
         <p>
           If you only wanted to learn the buttons, the tape, and what a pip

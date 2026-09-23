@@ -16,10 +16,10 @@ export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 text-fg">
       <span className="flex size-8 items-center justify-center rounded-sm bg-fg text-bg font-display text-lg leading-none">
-        N
+        S
       </span>
       {!compact && (
-        <span className="font-display text-xl tracking-tight">Nexora</span>
+        <span className="font-display text-xl tracking-tight">Sikkaaa</span>
       )}
     </Link>
   );
@@ -115,7 +115,7 @@ export function SiteFooter() {
         <div className="max-w-sm">
           <Logo />
           <p className="mt-4 text-sm text-muted">
-            Nexora is a paper-trading desk for learning global markets. Prices are
+            Sikkaaa is a paper-trading desk for learning global markets. Prices are
             simulated. Funding is admin-approved paper credit, not a live broker
             payout.
           </p>

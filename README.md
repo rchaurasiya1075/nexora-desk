@@ -1,23 +1,21 @@
-# Nexora
+# Sikkaaa
 
 Paper trading desk — live FX/crypto/gold anchors, Firebase login, deposits, admin desk.
 
-**Live site (open this):** [https://rchaurasiya1075.github.io/nexora-desk/](https://rchaurasiya1075.github.io/nexora-desk/)
+**Live site:** [https://sikkaaa.in/](https://sikkaaa.in/)
 
-Web trader: [https://rchaurasiya1075.github.io/nexora-desk/#/trade](https://rchaurasiya1075.github.io/nexora-desk/#/trade)
+Web trader: [https://sikkaaa.in/#/trade](https://sikkaaa.in/#/trade)
 
-This is a Nexora-branded **demo / paper** desk. It is not FOREX.com and not a licensed broker.
+This is a Sikkaaa-branded **demo / paper** desk. It is not FOREX.com and not a licensed broker.
 
 ## Firebase (`nexora-bb654`)
 
 Do this once in [Firebase Console](https://console.firebase.google.com/project/nexora-bb654):
 
-1. **Authentication → Get started → Email/Password → Enable**
-2. **Firestore Database → Create** (production mode is fine; rules are in `firestore.rules`)
-3. **Authentication → Settings → Authorized domains** add:
-   - `rchaurasiya1075.github.io`
-   - your custom domain (after you buy it)
-4. First signed-in account can **claim admin** on `/#/admin`
+1. **Authentication → Sign-in method → Email/Password → Enable** (required for Gmail + password and Forgot password)
+2. **Authentication → Settings → Authorized domains** add `sikkaaa.in` and `www.sikkaaa.in` (required for Continue with Google and the reset link)
+3. **Firestore Database → Create** if it does not exist yet
+4. Admin desk login stays user id `yuvraj1075` (not a Gmail)
 
 Web config lives in `src/lib/firebase/config.ts`.
 

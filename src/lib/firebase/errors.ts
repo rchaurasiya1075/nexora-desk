@@ -4,7 +4,7 @@ export function firebaseMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "Something went wrong.";
   const blob = `${code} ${raw}`;
   if (isAuthNotConfigured(err)) {
-    return "Sign-in failed. Use your Gmail and password, or the admin user id.";
+    return "Firebase Email/Password is off. Authentication → Sign-in method → Add Email/Password → Enable, then retry.";
   }
   switch (code) {
     case "auth/email-already-in-use":
@@ -18,15 +18,17 @@ export function firebaseMessage(err: unknown): string {
     case "auth/user-not-found":
       return "Email or password is wrong.";
     case "auth/operation-not-allowed":
-      return "Enable Email/Password in Firebase Authentication, then try again.";
+      return "Firebase Email/Password is off. Authentication → Sign-in method → Add Email/Password → Enable, then retry.";
     case "auth/unauthorized-domain":
-      return "Firebase → Authentication → Settings → Authorized domains mein rchaurasiya1075.github.io add karo.";
+      return "Firebase → Authentication → Settings → Authorized domains → add sikkaaa.in and www.sikkaaa.in.";
+    case "auth/unauthorized-continue-uri":
+      return "Add sikkaaa.in under Firebase → Authentication → Settings → Authorized domains, then reset again.";
     case "auth/popup-blocked":
       return "Browser ne Google popup block kar diya. Allow popups, phir Continue with Google dabao.";
     case "auth/account-exists-with-different-credential":
       return "Ye Gmail pehle kisi aur method se bana hai. Wahi method use karo.";
     case "permission-denied":
-      return "Firestore rules blocked this. Use test mode or the Nexora rules on project nexora-bb654.";
+      return "Firestore rules blocked this. Use test mode or the Sikkaaa rules on project nexora-bb654.";
     case "unavailable":
       return "Firebase is unreachable. Create the Firestore database for nexora-bb654.";
     default:

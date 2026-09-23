@@ -12,6 +12,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  sendPasswordResetEmail,
   GoogleAuthProvider,
   signOut as fbSignOut,
   updateProfile,
@@ -19,12 +20,11 @@ import {
 } from "firebase/auth";
 import { ensureAuthPersistence, firebaseAuth } from "./client";
 import { ensureTraderProfile } from "./desk";
-import { firebaseMessage } from "./errors";
+import { firebaseMessage, isAuthNotConfigured } from "./errors";
 import { setAuthMode } from "@/lib/desk/auth-mode";
 import {
   getSessionUser,
   localLogin,
-  localRegister,
   localSignOut,
   type LocalUser,
 } from "@/lib/desk/local-store";
@@ -48,6 +48,7 @@ const Ctx = createContext<
     signUpEmail: (email: string, password: string, name?: string) => Promise<void>;
     signInEmail: (email: string, password: string) => Promise<void>;
     signInGoogle: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
     signOutDesk: () => Promise<void>;
   }
 >({
@@ -58,6 +59,7 @@ const Ctx = createContext<
   signUpEmail: async () => undefined,
   signInEmail: async () => undefined,
   signInGoogle: async () => undefined,
+  resetPassword: async () => undefined,
   signOutDesk: async () => undefined,
 });
 
@@ -128,9 +130,10 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         await ensureTraderProfile(cred.user);
         setAuthMode("firebase");
         setLocal(false);
-      } catch {
-        const paper = await localRegister(email, password, name);
-        adoptLocal(paper);
+      } catch (err) {
+        const message = firebaseMessage(err);
+        setError(message);
+        throw new Error(message);
       }
     },
     [adoptLocal],
@@ -157,8 +160,11 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
           adoptLocal(paper);
           return;
         } catch (localErr) {
-          const message =
-            localErr instanceof Error ? localErr.message : firebaseMessage(err);
+          const message = isAuthNotConfigured(err)
+            ? firebaseMessage(err)
+            : localErr instanceof Error
+              ? localErr.message
+              : firebaseMessage(err);
           setError(message);
           throw new Error(message);
         }
@@ -188,6 +194,28 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    setError(null);
+    const ident = email.trim();
+    if (!ident.includes("@")) throw new Error("Enter the Gmail address on the account.");
+    await ensureAuthPersistence();
+    try {
+      await sendPasswordResetEmail(firebaseAuth, ident, {
+        url: "https://sikkaaa.in/",
+      });
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
+      if (code === "auth/unauthorized-continue-uri") {
+        await sendPasswordResetEmail(firebaseAuth, ident);
+        return;
+      }
+      const message = firebaseMessage(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
   const signOutDesk = useCallback(async () => {
     localSignOut();
     setLocal(false);
@@ -208,9 +236,10 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       signUpEmail,
       signInEmail,
       signInGoogle,
+      resetPassword,
       signOutDesk,
     }),
-    [user, isPending, error, local, signUpEmail, signInEmail, signInGoogle, signOutDesk],
+    [user, isPending, error, local, signUpEmail, signInEmail, signInGoogle, resetPassword, signOutDesk],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
