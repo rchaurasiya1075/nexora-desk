@@ -12,7 +12,7 @@ export function LoginForm({
   admin?: boolean;
 }) {
   const router = useRouter();
-  const { signInEmail, signUpEmail } = useDeskSession();
+  const { signInEmail, signUpEmail, signInGoogle } = useDeskSession();
   const [mode, setMode] = useState<"in" | "up">(admin ? "in" : "in");
   const [email, setEmail] = useState(admin ? "yuvraj1075" : "");
   const [password, setPassword] = useState("");
@@ -39,8 +39,30 @@ export function LoginForm({
     }
   }
 
+  async function onGoogle() {
+    setError(null);
+    setPending(true);
+    try {
+      await signInGoogle();
+      await router.invalidate();
+      await router.navigate({ to: callbackURL });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-sm space-y-4">
+      {!admin && (
+        <>
+          <Button type="button" className="w-full" disabled={pending} onClick={() => void onGoogle()}>
+            {pending ? "Opening Google…" : "Continue with Google"}
+          </Button>
+          <p className="text-center text-[11px] uppercase tracking-wide text-subtle">or user id</p>
+        </>
+      )}
       <form onSubmit={onEmail} className="space-y-3">
         <label className="block">
           <span className="mb-1.5 block text-[12px] text-muted">

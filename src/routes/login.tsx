@@ -21,8 +21,9 @@ export function LoginPage() {
         <Logo />
         <h1 className="mt-8 font-display text-4xl">Sign in to trade</h1>
         <p className="mt-3 text-sm text-muted">
-          Sign in with Gmail and a password. The web trader stays locked until
-          you do. Admin signs in with user id yuvraj1075.
+          Continue with Google (already on in Firebase), or sign in with a user
+          id and password. Admin user id is yuvraj1075. Email/password accounts
+          need that provider switched on in Firebase.
         </p>
         <div className="mt-8">
           <LoginForm callbackURL="/trade" />

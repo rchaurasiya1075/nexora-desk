@@ -11,6 +11,8 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut as fbSignOut,
   updateProfile,
   type User,
@@ -45,6 +47,7 @@ const Ctx = createContext<
   SessionState & {
     signUpEmail: (email: string, password: string, name?: string) => Promise<void>;
     signInEmail: (email: string, password: string) => Promise<void>;
+    signInGoogle: () => Promise<void>;
     signOutDesk: () => Promise<void>;
   }
 >({
@@ -54,6 +57,7 @@ const Ctx = createContext<
   local: false,
   signUpEmail: async () => undefined,
   signInEmail: async () => undefined,
+  signInGoogle: async () => undefined,
   signOutDesk: async () => undefined,
 });
 
@@ -169,6 +173,27 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     [adoptLocal],
   );
 
+  const signInGoogle = useCallback(async () => {
+    setError(null);
+    await ensureAuthPersistence();
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      const cred = await signInWithPopup(firebaseAuth, provider);
+      await ensureTraderProfile(cred.user).catch(() => undefined);
+      setAuthMode("firebase");
+      setLocal(false);
+      setUser(toUser(cred.user));
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+      const message = firebaseMessage(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
   const signOutDesk = useCallback(async () => {
     localSignOut();
     setLocal(false);
@@ -188,9 +213,10 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       local,
       signUpEmail,
       signInEmail,
+      signInGoogle,
       signOutDesk,
     }),
-    [user, isPending, error, local, signUpEmail, signInEmail, signOutDesk],
+    [user, isPending, error, local, signUpEmail, signInEmail, signInGoogle, signOutDesk],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

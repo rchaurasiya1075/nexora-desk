@@ -20,7 +20,11 @@ export function firebaseMessage(err: unknown): string {
     case "auth/operation-not-allowed":
       return "Enable Email/Password in Firebase Authentication, then try again.";
     case "auth/unauthorized-domain":
-      return "Add this site’s domain under Firebase Authentication → Settings → Authorized domains.";
+      return "Firebase → Authentication → Settings → Authorized domains mein rchaurasiya1075.github.io add karo.";
+    case "auth/popup-blocked":
+      return "Browser ne Google popup block kar diya. Allow popups, phir Continue with Google dabao.";
+    case "auth/account-exists-with-different-credential":
+      return "Ye Gmail pehle kisi aur method se bana hai. Wahi method use karo.";
     case "permission-denied":
       return "Firestore rules blocked this. Use test mode or the Nexora rules on project nexora-bb654.";
     case "unavailable":
