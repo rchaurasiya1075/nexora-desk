@@ -45,7 +45,6 @@ const Ctx = createContext<
   SessionState & {
     signUpEmail: (email: string, password: string, name?: string) => Promise<void>;
     signInEmail: (email: string, password: string) => Promise<void>;
-    enterDemo: () => Promise<void>;
     signOutDesk: () => Promise<void>;
   }
 >({
@@ -55,7 +54,6 @@ const Ctx = createContext<
   local: false,
   signUpEmail: async () => undefined,
   signInEmail: async () => undefined,
-  enterDemo: async () => undefined,
   signOutDesk: async () => undefined,
 });
 
@@ -143,53 +141,33 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   const signInEmail = useCallback(
     async (email: string, password: string) => {
       setError(null);
+      const ident = email.trim();
+      if (!ident.includes("@")) {
+        const paper = await localLogin(ident, password);
+        adoptLocal(paper);
+        return;
+      }
       try {
         await ensureAuthPersistence();
-        const cred = await signInWithEmailAndPassword(
-          firebaseAuth,
-          email.trim(),
-          password,
-        );
+        const cred = await signInWithEmailAndPassword(firebaseAuth, ident, password);
         await ensureTraderProfile(cred.user);
         setAuthMode("firebase");
         setLocal(false);
       } catch (err) {
-        if (isAuthNotConfigured(err)) {
-          try {
-            const paper = await localLogin(email, password);
-            adoptLocal(paper);
-            return;
-          } catch {
-            const paper = await localRegister(email, password);
-            adoptLocal(paper);
-            return;
-          }
-        }
         try {
-          const paper = await localLogin(email, password);
+          const paper = await localLogin(ident, password);
           adoptLocal(paper);
           return;
-        } catch {
-          /* stay on firebase error */
+        } catch (localErr) {
+          const message =
+            localErr instanceof Error ? localErr.message : firebaseMessage(err);
+          setError(message);
+          throw new Error(message);
         }
-        const message = firebaseMessage(err);
-        setError(message);
-        throw new Error(message);
       }
     },
     [adoptLocal],
   );
-
-  const enterDemo = useCallback(async () => {
-    setError(null);
-    try {
-      const paper = await localLogin("demo@nexora.local", "nexora-demo");
-      adoptLocal(paper);
-    } catch {
-      const paper = await localRegister("demo@nexora.local", "nexora-demo", "Demo trader");
-      adoptLocal(paper);
-    }
-  }, [adoptLocal]);
 
   const signOutDesk = useCallback(async () => {
     localSignOut();
@@ -210,10 +188,9 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       local,
       signUpEmail,
       signInEmail,
-      enterDemo,
       signOutDesk,
     }),
-    [user, isPending, error, local, signUpEmail, signInEmail, enterDemo, signOutDesk],
+    [user, isPending, error, local, signUpEmail, signInEmail, signOutDesk],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

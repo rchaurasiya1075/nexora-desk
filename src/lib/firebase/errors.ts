@@ -4,7 +4,7 @@ export function firebaseMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "Something went wrong.";
   const blob = `${code} ${raw}`;
   if (isAuthNotConfigured(err)) {
-    return "Firebase Authentication is not turned on yet. Using a paper desk on this browser instead.";
+    return "Sign-in failed. Use your Gmail and password, or the admin user id.";
   }
   switch (code) {
     case "auth/email-already-in-use":

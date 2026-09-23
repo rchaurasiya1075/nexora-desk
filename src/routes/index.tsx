@@ -58,34 +58,32 @@ function Hero() {
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 md:grid-cols-[1.15fr_0.85fr] md:py-24">
       <div>
         <p className="stagger-in text-xs uppercase tracking-[0.2em] text-subtle">
-          Global markets desk
+          Nexora web trader
         </p>
         <h1 className="stagger-in mt-4 font-display text-[clamp(2.4rem,6vw,4.6rem)] leading-[0.95] text-fg">
-          More markets.
+          Fast, powerful and
           <br />
-          More hours.
-          <br />
-          More working trades.
+          live on the tape.
         </h1>
         <p className="stagger-in mt-6 max-w-lg text-base text-muted md:text-lg">
-          A full web trader in the spirit of a global FX broker — forex, gold,
-          crypto, indices, oil and share CFDs. Sign in, request a deposit, wait
-          for admin approval, then trade. Orders fill at the live bid and ask.
+          A FOREX.com-style web trader: watchlist, chart, deal ticket, positions
+          and news on one screen. RAW from 0.0 pips plus commission, or
+          Standard spread-only. Sign in, add funds, trade at the live bid and ask.
         </p>
         <div className="stagger-in mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg">
             <Link to="/trade">
-              Start trading
+              Launch web trader
               <ArrowRight className="size-4" />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link to="/pricing">How much it costs</Link>
+            <Link to="/login">Create a Gmail account</Link>
           </Button>
         </div>
         <dl className="mt-10 grid grid-cols-3 gap-4 max-w-md">
           <HeroStat k="Markets" v="32" />
-          <HeroStat k="Sign-in" v="Yes" />
+          <HeroStat k="RAW from" v="0.0 pip" />
           <HeroStat k="Min size" v="0.01" />
         </dl>
       </div>
@@ -120,9 +118,9 @@ function HeroTicket() {
               {q.changePct.toFixed(2)}% session
             </p>
           </div>
-          <span className="rounded-full bg-bg-subtle px-2 py-1 text-[11px] text-muted">
-            Demo fill
-          </span>
+            <span className="rounded-full bg-buy/15 px-2 py-1 text-[11px] text-buy">
+              Live quote
+            </span>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-2">
           <Link
@@ -270,21 +268,25 @@ function Platforms() {
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-subtle">Web trader</p>
           <h2 className="mt-2 font-display text-3xl md:text-4xl">
-            One screen. Watchlist, chart, ticket, positions.
+            Default workspace. Watchlist, chart, positions, news.
           </h2>
           <p className="mt-4 text-sm text-muted md:text-base">
-            Desktop gets the three-pane desk. Phone gets a full-height chart, a
-            positions drawer, and a ticket sheet with 44px Buy/Sell — the same
-            engine underneath.
+            The same chrome as a professional FX web trader: account strip with
+            equity and margin, Sell/Buy on every market, 1-click fill, MACD on
+            the chart, and a deal ticket when you want size, stop and limit.
           </p>
           <ul className="mt-6 space-y-3 text-sm text-muted">
             <li className="flex gap-2">
               <Smartphone className="mt-0.5 size-4 shrink-0 text-accent" />
-              Mobile ticket, market sheet, safe-area padding
+              Phone: markets, chart, positions, ticket — 44px targets
             </li>
             <li className="flex gap-2">
               <LineChart className="mt-0.5 size-4 shrink-0 text-accent" />
-              Candles from 1 minute to daily with a live last price
+              1m to daily candles, live last price, MACD, crosshair
+            </li>
+            <li className="flex gap-2">
+              <Shield className="mt-0.5 size-4 shrink-0 text-accent" />
+              Admin-only deposits. Your login stays on Firebase.
             </li>
           </ul>
         </div>
@@ -292,16 +294,16 @@ function Platforms() {
           <p className="text-[11px] uppercase tracking-wide text-subtle">Account bar</p>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-md bg-bg-subtle p-3">
-              <p className="text-[11px] text-subtle">Balance</p>
-              <p className="num text-lg">after deposit</p>
+              <p className="text-[11px] text-subtle">Available to trade</p>
+              <p className="num text-lg">Free margin</p>
             </div>
             <div className="rounded-md bg-bg-subtle p-3">
-              <p className="text-[11px] text-subtle">Leverage</p>
-              <p className="num text-lg">up to 50:1</p>
+              <p className="text-[11px] text-subtle">Unrealised P/L</p>
+              <p className="num text-lg">Live</p>
             </div>
             <div className="rounded-md bg-bg-subtle p-3">
-              <p className="text-[11px] text-subtle">Stop-out</p>
-              <p className="num text-lg">50%</p>
+              <p className="text-[11px] text-subtle">1-click</p>
+              <p className="num text-lg">Off / On</p>
             </div>
             <div className="rounded-md bg-bg-subtle p-3">
               <p className="text-[11px] text-subtle">Min lot</p>
@@ -350,10 +352,11 @@ function Cta() {
     <section className="border-t border-border">
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-20 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="font-display text-3xl md:text-4xl">Open the demo. Fill a ticket.</h2>
+          <h2 className="font-display text-3xl md:text-4xl">Open the web trader</h2>
           <p className="mt-3 max-w-md text-sm text-muted">
             Sign in, request UPI or bank funding, then trade after admin
-            approval. Real order types. Rupee cost on every ticket.
+            approval. Live quotes on FX, gold and crypto. Paper fills — admin
+            stays with you.
           </p>
         </div>
         <Button asChild size="lg">

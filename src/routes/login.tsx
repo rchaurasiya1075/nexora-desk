@@ -21,8 +21,8 @@ export function LoginPage() {
         <Logo />
         <h1 className="mt-8 font-display text-4xl">Sign in to trade</h1>
         <p className="mt-3 text-sm text-muted">
-          Open the paper desk instantly, or create an email account. First
-          account on this browser is admin and starts with $10,000 paper.
+          Sign in with Gmail and a password. The web trader stays locked until
+          you do. Admin signs in with user id yuvraj1075.
         </p>
         <div className="mt-8">
           <LoginForm callbackURL="/trade" />

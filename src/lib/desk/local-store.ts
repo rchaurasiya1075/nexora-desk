@@ -15,6 +15,7 @@ export type LocalUser = {
   id: string;
   name: string;
   email: string;
+  username?: string;
   passwordHash: string;
   createdAt: string;
 };
@@ -32,7 +33,35 @@ export type DeskState = {
   nextLedgerId: number;
 };
 
+const ADMIN_ID = "admin_yuvraj1075";
+const ADMIN_USER = "yuvraj1075";
+const ADMIN_HASH = "cc158eff12c32971a0b518858c09908034b032da4c8db5768001574e7f59f886";
+
 const listeners = new Set<() => void>();
+
+function ensureAdmin(desk: DeskState) {
+  let user = desk.users.find(
+    (u) => u.id === ADMIN_ID || u.username === ADMIN_USER || u.email === ADMIN_USER,
+  );
+  if (!user) {
+    user = {
+      id: ADMIN_ID,
+      name: "Yuvraj",
+      email: ADMIN_USER,
+      username: ADMIN_USER,
+      passwordHash: ADMIN_HASH,
+      createdAt: "2026-09-22T00:00:00.000Z",
+    };
+    desk.users.unshift(user);
+  } else {
+    user.id = user.id || ADMIN_ID;
+    user.username = ADMIN_USER;
+    user.passwordHash = ADMIN_HASH;
+    user.name = user.name || "Yuvraj";
+  }
+  if (!desk.staff.includes(user.id)) desk.staff.unshift(user.id);
+  if (!desk.accounts[user.id]) desk.accounts[user.id] = emptyBook();
+}
 
 function seed(): DeskState {
   const methods: PaymentMethod[] = [
@@ -124,16 +153,25 @@ function emptyBook(): AccountBook {
 }
 
 export function loadDesk(): DeskState {
-  if (typeof window === "undefined") return seed();
-  try {
-    const raw = window.localStorage.getItem(DESK_KEY);
-    if (!raw) return seed();
-    const parsed = JSON.parse(raw) as DeskState;
-    if (!parsed || !Array.isArray(parsed.users)) return seed();
-    return parsed;
-  } catch {
-    return seed();
+  if (typeof window === "undefined") {
+    const fresh = seed();
+    ensureAdmin(fresh);
+    return fresh;
   }
+  let desk = seed();
+  let stored = "";
+  try {
+    stored = window.localStorage.getItem(DESK_KEY) || "";
+    if (stored) {
+      const parsed = JSON.parse(stored) as DeskState;
+      if (parsed && Array.isArray(parsed.users)) desk = parsed;
+    }
+  } catch {
+    desk = seed();
+  }
+  ensureAdmin(desk);
+  if (!stored.includes(ADMIN_ID)) saveDesk(desk);
+  return desk;
 }
 
 export function saveDesk(next: DeskState) {
@@ -251,26 +289,28 @@ export async function localRegister(
     createdAt: new Date().toISOString(),
   };
   mutateDesk((desk) => {
-    if (desk.users.some((u) => u.email === em)) {
+    if (
+      desk.users.some(
+        (u) => u.email === em || u.username === em || em === ADMIN_USER,
+      )
+    ) {
       throw new Error("That email is already registered.");
     }
     desk.users.push(created);
-    const book = ensureAccount(created.id, desk);
-    if (book.balance <= 0) {
-      book.balance = 10_000;
-      appendLedger(desk, created.id, "credit", 10_000, "Paper demo credit");
-    }
-    if (desk.staff.length === 0) desk.staff.push(created.id);
+    ensureAccount(created.id, desk);
   });
   setSessionUserId(created.id);
   return created;
 }
 
 export async function localLogin(email: string, password: string): Promise<LocalUser> {
-  const em = email.trim().toLowerCase();
+  const key = email.trim().toLowerCase();
   const hash = await hashPassword(password);
-  const user = loadDesk().users.find((u) => u.email === em);
-  if (!user || user.passwordHash !== hash) throw new Error("Email or password is wrong.");
+  const desk = loadDesk();
+  const user = desk.users.find(
+    (u) => u.email === key || u.username === key,
+  );
+  if (!user || user.passwordHash !== hash) throw new Error("User id or password is wrong.");
   setSessionUserId(user.id);
   return user;
 }

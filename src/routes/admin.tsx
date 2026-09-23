@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminDesk } from "@/components/admin/admin-desk";
 import { LoginForm } from "@/components/auth/login-form";
 import { Logo } from "@/components/layout/site-header";
-import { SignInGate } from "@/lib/auth/gates";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { SignInGate } from "@/lib/firebase/gates";
+import { useDeskSession } from "@/lib/firebase/session";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 export function AdminPage() {
-  const { isPending } = useCurrentUserState();
+  const { isPending } = useDeskSession();
   if (isPending) {
     return (
       <div className="grid min-h-dvh place-items-center bg-bg text-fg">
@@ -32,7 +32,7 @@ function AdminLocked() {
         Admin tools are tied to your login.
       </p>
       <div className="mt-8">
-        <LoginForm callbackURL="/admin" />
+        <LoginForm callbackURL="/admin" admin />
       </div>
       <Link to="/" className="mt-8 text-sm text-muted hover:text-fg">
         Back
