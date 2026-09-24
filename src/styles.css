@@ -83,6 +83,23 @@
   }
 }
 
+html.theme-light {
+  --color-bg: #f6f5f1;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #eceae4;
+  --color-fg: #141416;
+  --color-muted: #5e5e68;
+  --color-subtle: #767680;
+  --color-border: color-mix(in oklab, #141416 12%, transparent);
+  --color-border-strong: color-mix(in oklab, #141416 22%, transparent);
+  --color-accent: #1c1d22;
+  --color-accent-fg: #f6f5f1;
+  --color-buy: #1c7a4e;
+  --color-sell: #c44752;
+  --shadow-border: 0 0 0 1px rgba(20, 20, 22, 0.1);
+  --shadow-border-hover: 0 0 0 1px rgba(20, 20, 22, 0.18);
+}
+
 @utility font-display {
   font-family: var(--font-display);
 }

@@ -323,6 +323,19 @@ export async function localLogin(email: string, password: string): Promise<Local
   return user;
 }
 
+export async function localChangePassword(current: string, next: string) {
+  const user = getSessionUser();
+  if (!user) throw new Error("Sign in first.");
+  if (next.length < 6) throw new Error("Password must be at least 6 characters.");
+  const currentHash = await hashPassword(current);
+  if (user.passwordHash !== currentHash) throw new Error("Current password is wrong.");
+  const nextHash = await hashPassword(next);
+  mutateDesk((desk) => {
+    const row = desk.users.find((u) => u.id === user.id);
+    if (row) row.passwordHash = nextHash;
+  });
+}
+
 export function localSignOut() {
   setSessionUserId(null);
 }

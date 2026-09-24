@@ -35,7 +35,12 @@ export function UserButton() {
   if (isPending || !user) return null;
   return (
     <div className="flex items-center gap-2">
-      <span className="truncate text-sm text-fg">{user.name}</span>
+      <Link to="/account" className="flex max-w-[180px] items-center gap-2 text-sm text-fg" aria-label="Open profile">
+        <span className="grid size-8 place-items-center rounded-full bg-fg text-xs font-semibold text-bg">
+          {(user.name || "S").slice(0, 1).toUpperCase()}
+        </span>
+        <span className="truncate">{user.name}</span>
+      </Link>
       <button
         type="button"
         className="flex size-9 items-center justify-center rounded-sm text-muted hover:bg-bg-subtle hover:text-fg"

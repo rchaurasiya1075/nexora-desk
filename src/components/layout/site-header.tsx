@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthSlot } from "@/components/auth/auth-slot";
+import { bootTheme } from "@/lib/profile/prefs";
 import { cn } from "@/lib/utils";
 import { useOps } from "@/lib/ops/use-ops";
 
@@ -30,6 +31,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const ops = useOps();
+  useEffect(() => bootTheme(), []);
 
   return (
     <header
@@ -128,7 +130,7 @@ export function SiteFooter() {
               Web trader
             </Link>
             <Link to="/account" className="text-muted hover:text-fg">
-              Account & deposit
+              Profile
             </Link>
             <Link to="/markets" className="text-muted hover:text-fg">
               Markets
