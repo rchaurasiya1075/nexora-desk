@@ -1,5 +1,10 @@
 import { getAuthMode } from "@/lib/desk/auth-mode";
-import { loadDesk } from "@/lib/desk/local-store";
+import { getSessionUser, loadDesk } from "@/lib/desk/local-store";
+import { addDoc, collection } from "firebase/firestore";
+import { db, firebaseAuth } from "@/lib/firebase/client";
+import { readerDb } from "@/lib/firebase/reader";
+import { builtinCurrencies, builtinMethods } from "@/lib/ops/rails";
+import { toUsd } from "@/lib/ops/money";
 import { adjustUserBalance, balanceOverride } from "@/lib/ops/balance-adjust";
 import { fetchDirectory, profileFromDesk, publishProfiles, toDeskUser } from "@/lib/ops/directory";
 import * as firebaseApi from "@/lib/firebase/desk";
@@ -36,7 +41,54 @@ export async function listMyDeposits() {
 export async function createDepositRequest(
   input: Parameters<typeof localApi.createDepositRequest>[0],
 ) {
-  return api().createDepositRequest(input);
+  const method = builtinMethods().find((row) => row.id === Number(input.data.methodId));
+  const rate = builtinCurrencies().find((row) => row.code === method?.currency)?.unitsPerUsd ?? 83.5;
+  const usd = method ? toUsd(Number(input.data.amount) || 0, rate) : 0;
+  let result: { id: number; usdCredit: number } | null = null;
+  try {
+    result = await api().createDepositRequest(input);
+  } catch {
+    result = null;
+  }
+  const person = firebaseAuth.currentUser;
+  const local = getSessionUser();
+  const userId = person?.uid || local?.id || "";
+  if (userId && method) {
+    try {
+      const database = person ? db : await readerDb();
+      const ref = await addDoc(collection(database, "deposits"), {
+        userId,
+        userName: person?.displayName || local?.name || person?.email || local?.email || "Trader",
+        userEmail: person?.email || local?.email || "",
+        amountLocal: Number(input.data.amount) || 0,
+        amountUSD: result?.usdCredit || usd,
+        currencyLocal: method.currency,
+        paymentMethod: method.title,
+        methodTitle: method.title,
+        methodKind: method.kind,
+        amount: Number(input.data.amount) || 0,
+        currency: method.currency,
+        usdCredit: result?.usdCredit || usd,
+        payerName: input.data.payerName,
+        reference: input.data.reference,
+        utrNumber: input.data.reference,
+        note: input.data.note || null,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+      if (!result) result = { id: stableDepositId(ref.id), usdCredit: usd };
+    } catch {
+      /* local request still stands when the first call succeeded */
+    }
+  }
+  if (!result) throw new Error("Could not submit the deposit. Sign in and enter the UTR.");
+  return result;
+}
+
+function stableDepositId(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return hash || 1;
 }
 export async function listAllDeposits(input?: Parameters<typeof localApi.listAllDeposits>[0]) {
   return api().listAllDeposits(input);

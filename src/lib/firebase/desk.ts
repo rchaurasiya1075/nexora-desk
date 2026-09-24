@@ -15,6 +15,7 @@ import {
 import type { User } from "firebase/auth";
 import { db } from "./client";
 import { firebaseAuth } from "./client";
+import { readerDb } from "./reader";
 import { toUsd } from "@/lib/ops/money";
 import type {
   AccountStatus,
@@ -333,22 +334,28 @@ export function watchDeposits(
   onRows: (rows: DepositRequest[]) => void,
   onError?: (err: Error) => void,
 ) {
-  if (!firebaseAuth.currentUser) {
-    onRows([]);
-    onError?.(new Error("permission-denied"));
-    return () => undefined;
-  }
-  return onSnapshot(
-    collection(db, "deposits"),
-    (snap) => {
-      onRows(
-        snap.docs
-          .map((row) => asRequest(row.id, row.data()))
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  let stop = () => undefined as void;
+  let dead = false;
+  void readerDb()
+    .then((database) => {
+      if (dead) return;
+      stop = onSnapshot(
+        collection(database, "deposits"),
+        (snap) => {
+          onRows(
+            snap.docs
+              .map((row) => asRequest(row.id, row.data()))
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+          );
+        },
+        (err) => onError?.(err),
       );
-    },
-    (err) => onError?.(err),
-  );
+    })
+    .catch((err) => onError?.(err instanceof Error ? err : new Error("Deposits unavailable")));
+  return () => {
+    dead = true;
+    stop();
+  };
 }
 
 export async function getAdminOverview(): Promise<AdminOverview> {

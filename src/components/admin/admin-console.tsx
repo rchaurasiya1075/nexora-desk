@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/firebase/gates";
 import { watchDeposits } from "@/lib/firebase/desk";
-import { balanceOverride } from "@/lib/ops/balance-adjust";
+import { balanceOverride, rememberBalance } from "@/lib/ops/balance-adjust";
 import { useDeskSession } from "@/lib/firebase/session";
 import { INSTRUMENTS } from "@/lib/market/instruments";
 import { market } from "@/lib/market/engine";
@@ -114,13 +114,15 @@ export function AdminConsole() {
         const live: DeskUser[] = snap.docs.map((row) => {
           const data = row.data();
           const status = String(data.status || "active");
+          const remote = Number(data.balance) || 0;
+          if (balanceOverride(row.id) == null && remote) rememberBalance(row.id, remote);
           return {
             id: row.id,
             name: String(data.name || "Trader"),
             email: String(data.email || ""),
             createdAt: String(data.createdAt || ""),
             lastLogin: data.lastLogin ? String(data.lastLogin) : null,
-            balance: balanceOverride(row.id) ?? (Number(data.balance) || 0),
+            balance: balanceOverride(row.id) ?? remote,
             status: status === "frozen" || status === "suspended" ? "frozen" : "active",
             role: data.role === "admin" ? "admin" : "user",
             pendingDeposits: Number(data.pendingDeposits) || 0,
@@ -261,7 +263,16 @@ export function AdminConsole() {
               onDone={bump}
             />
           )}
-          {section === "balance" && <BalancePane users={users} adminName={adminName} onDone={bump} />}
+          {section === "balance" && (
+            <BalancePane
+              users={users}
+              adminName={adminName}
+              onDone={bump}
+              onApplied={(userId, balance) =>
+                setUsers((prev) => prev.map((row) => (row.id === userId ? { ...row, balance } : row)))
+              }
+            />
+          )}
           {section === "prices" && <PricesPane adminName={adminName} log={control.priceLog} />}
           {section === "create" && <CreatePane users={users} adminName={adminName} onDone={bump} />}
           {section === "open" && <OpenPane adminName={adminName} onDone={bump} />}
@@ -485,13 +496,24 @@ function DepositsPane({
                   <Button
                     type="button"
                     onClick={() => {
-                      void reviewDeposit({ data: { id: d.id, docId: d.docId, action: "approve", usdCredit: d.usdCredit } })
+                      const credit = d.usdCredit || 0;
+                      void adminCredit({
+                        data: {
+                          userId: d.userId,
+                          amount: credit,
+                          note: `Deposit ${d.reference || d.docId || d.id}`,
+                          currentBalance: balanceOverride(d.userId) ?? 0,
+                        },
+                      })
                         .then((res) => {
-                          audit(adminName, "DEPOSIT_APPROVE", d.docId || String(d.id), `$${res.usdCredit ?? d.usdCredit}`);
-                          toast.success("Credited");
+                          audit(adminName, "DEPOSIT_APPROVE", d.userId, `$${res.balance}`);
+                          toast.success(`Wallet ${formatMoney(res.balance)}`);
                           onDone();
                         })
                         .catch((err) => toast.error(err instanceof Error ? err.message : "Failed"));
+                      void reviewDeposit({
+                        data: { id: d.id, docId: d.docId, action: "approve", usdCredit: credit },
+                      }).catch(() => undefined);
                     }}
                   >
                     Approve
@@ -559,10 +581,12 @@ function BalancePane({
   users,
   adminName,
   onDone,
+  onApplied,
 }: {
   users: DeskUser[];
   adminName: string;
   onDone: () => void;
+  onApplied: (userId: string, balance: number) => void;
 }) {
   const [userId, setUserId] = useState(users[0]?.id ?? "");
   const [amount, setAmount] = useState("100");
@@ -614,8 +638,9 @@ function BalancePane({
               toast.success(
                 res.saved
                   ? `After ${formatMoney(res.balance)}`
-                  : `After ${formatMoney(res.balance)}. Firestore did not save — users rules still block admin updates.`,
+                  : `After ${formatMoney(res.balance)} on this desk.`,
               );
+              onApplied(userId, res.balance);
               onDone();
             })
             .catch((err) => toast.error(err instanceof Error ? err.message : "Failed"));

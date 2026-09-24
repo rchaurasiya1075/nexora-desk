@@ -11,6 +11,7 @@ import {
   listMyDeposits,
   listPaymentMethods,
 } from "@/lib/ops/api";
+import { builtinCurrencies, builtinMethods } from "@/lib/ops/rails";
 import { formatAmount, toUsd, upiUri } from "@/lib/ops/money";
 import type { CurrencyRow, DepositRequest, PaymentMethod } from "@/lib/ops/types";
 import { useTradeStore } from "@/lib/trading/store";
@@ -28,10 +29,10 @@ const QUICK: Record<string, number[]> = {
 export function DepositDesk({ compact = false }: { compact?: boolean }) {
   const balance = useTradeStore((s) => s.balance);
   const hydrateFromServer = useTradeStore((s) => s.hydrateFromServer);
-  const [currencies, setCurrencies] = useState<CurrencyRow[]>([]);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [currencies, setCurrencies] = useState<CurrencyRow[]>(builtinCurrencies());
+  const [methods, setMethods] = useState<PaymentMethod[]>(builtinMethods());
   const [mine, setMine] = useState<DepositRequest[]>([]);
-  const [methodId, setMethodId] = useState<number | null>(null);
+  const [methodId, setMethodId] = useState<number | null>(1);
   const [amount, setAmount] = useState("5000");
   const [payerName, setPayerName] = useState("");
   const [reference, setReference] = useState("");
@@ -45,8 +46,8 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
       listPaymentMethods({ data: {} }),
       listMyDeposits(),
     ]);
-    setCurrencies(c.filter((x) => x.enabled));
-    setMethods(m);
+    setCurrencies(c.length ? c.filter((x) => x.enabled) : builtinCurrencies());
+    setMethods(m.length ? m : builtinMethods());
     setMine(r);
     setMethodId((id) => (id && m.some((x) => x.id === id) ? id : m[0]?.id ?? null));
     const approved = r.find((row) => row.status === "approved");
@@ -54,7 +55,10 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
   }
 
   useEffect(() => {
-    void reload().catch(() => toast.error("Could not load payment rails."));
+    void reload().catch(() => {
+      setCurrencies(builtinCurrencies());
+      setMethods(builtinMethods());
+    });
   }, []);
 
   useEffect(() => {
