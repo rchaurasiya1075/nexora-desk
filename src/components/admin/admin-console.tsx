@@ -34,6 +34,7 @@ import {
   setMarketPrice,
   subscribeControl,
 } from "@/lib/ops/control-store";
+import { directoryError } from "@/lib/ops/directory";
 import type { DepositRequest, DeskUser } from "@/lib/ops/types";
 import { formatMoney } from "@/lib/utils";
 
@@ -76,6 +77,7 @@ export function AdminConsole() {
   const adminName = user?.name || user?.email || "Admin";
   const [section, setSection] = useState<Section>("dash");
   const [users, setUsers] = useState<DeskUser[]>([]);
+  const [userNote, setUserNote] = useState<string | null>(null);
   const [deposits, setDeposits] = useState<DepositRequest[]>([]);
   const [tick, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
@@ -83,7 +85,12 @@ export function AdminConsole() {
   useEffect(() => subscribeControl(bump), []);
 
   useEffect(() => {
-    void listDeskUsers().then(setUsers).catch(() => setUsers([]));
+    void listDeskUsers()
+      .then((rows) => {
+        setUsers(rows);
+        setUserNote(directoryError());
+      })
+      .catch(() => setUsers([]));
     void listAllDeposits().then(setDeposits).catch(() => setDeposits([]));
   }, [tick]);
 
@@ -170,7 +177,7 @@ export function AdminConsole() {
           )}
 
           {section === "users" && (
-            <UsersPane users={users} adminName={adminName} onDone={bump} />
+            <UsersPane users={users} note={userNote} adminName={adminName} onDone={bump} />
           )}
           {section === "deposits" && (
             <DepositsPane
@@ -230,10 +237,12 @@ function LogList({ rows }: { rows: { at: string; admin: string; action: string; 
 
 function UsersPane({
   users,
+  note,
   adminName,
   onDone,
 }: {
   users: DeskUser[];
+  note: string | null;
   adminName: string;
   onDone: () => void;
 }) {
@@ -242,7 +251,10 @@ function UsersPane({
   return (
     <div>
       <h1 className="font-display text-3xl">Users</h1>
-      <p className="mt-2 text-sm text-muted">{users.length} signed-in account{users.length === 1 ? "" : "s"}</p>
+      <p className="mt-2 text-sm text-muted">
+        {users.length} signed-in account{users.length === 1 ? "" : "s"}. Name, email, id, created, last login, balance, and open trades.
+      </p>
+      {note && <p className="mt-2 text-sm text-sell">{note}</p>}
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="text-[11px] uppercase tracking-wide text-muted">

@@ -20,6 +20,7 @@ import {
 } from "firebase/auth";
 import { ensureAuthPersistence, firebaseAuth } from "./client";
 import { ensureTraderProfile } from "./desk";
+import { profileFromDesk, publishProfiles } from "@/lib/ops/directory";
 import { firebaseMessage, isAuthNotConfigured } from "./errors";
 import { setAuthMode } from "@/lib/desk/auth-mode";
 import {
@@ -92,6 +93,15 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
           setUser(toUser(next));
           setPending(false);
           void ensureTraderProfile(next).catch(() => undefined);
+          void publishProfiles([
+            profileFromDesk({
+              id: next.uid,
+              name: next.displayName || next.email?.split("@")[0] || "Trader",
+              email: next.email || "",
+              createdAt: next.metadata.creationTime,
+              lastLogin: next.metadata.lastSignInTime,
+            }),
+          ]);
           return;
         }
         const paper = getSessionUser();
@@ -99,6 +109,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
           setAuthMode("local");
           setLocal(true);
           setUser(fromLocal(paper));
+          void publishProfiles([profileFromDesk(paper)]);
         } else {
           setUser(null);
           setLocal(false);
@@ -113,6 +124,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     setAuthMode("local");
     setLocal(true);
     setUser(fromLocal(paper));
+    void publishProfiles([profileFromDesk(paper)]);
   }, []);
 
   const signUpEmail = useCallback(

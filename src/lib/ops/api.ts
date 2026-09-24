@@ -1,4 +1,6 @@
 import { getAuthMode } from "@/lib/desk/auth-mode";
+import { loadDesk } from "@/lib/desk/local-store";
+import { fetchDirectory, profileFromDesk, publishProfiles, toDeskUser } from "@/lib/ops/directory";
 import * as firebaseApi from "@/lib/firebase/desk";
 import * as localApi from "@/lib/ops/local-api";
 
@@ -43,27 +45,43 @@ export async function listDeskUsers() {
     /* viewer is not the local operator */
   }
   try {
-    for (const user of await firebaseApi.listVisibleTraders()) {
-      const sameEmail = [...byId.values()].find(
-        (row) => row.email && user.email && row.email.toLowerCase() === user.email.toLowerCase(),
-      );
-      if (sameEmail && sameEmail.id !== user.id) byId.delete(sameEmail.id);
-      const prev = sameEmail && sameEmail.id === user.id ? sameEmail : undefined;
-      byId.set(user.id, {
-        ...user,
-        balance: user.balance || prev?.balance || sameEmail?.balance || 0,
-        openPositions: user.openPositions || prev?.openPositions || sameEmail?.openPositions || 0,
-        pendingDeposits: user.pendingDeposits || prev?.pendingDeposits || sameEmail?.pendingDeposits || 0,
-        role: user.role === "admin" || prev?.role === "admin" || sameEmail?.role === "admin" ? "admin" : "user",
-        lastLogin: user.lastLogin || prev?.lastLogin || sameEmail?.lastLogin || null,
-      });
-    }
+    const desk = loadDesk();
+    await publishProfiles(desk.users.map((user) => profileFromDesk(user)));
   } catch {
-    /* Firestore rules still private, or the project has no traders yet */
+    /* directory is best-effort */
   }
+  try {
+    for (const user of await firebaseApi.listVisibleTraders()) mergeUser(byId, user);
+  } catch {
+    /* Firestore rules still deny the list */
+  }
+  for (const user of await fetchDirectory()) mergeUser(byId, toDeskUser(user));
   return [...byId.values()].sort((a, b) =>
     (b.lastLogin || b.createdAt).localeCompare(a.lastLogin || a.createdAt),
   );
+}
+
+function mergeUser(
+  byId: Map<string, Awaited<ReturnType<typeof localApi.listDeskUsers>>[number]>,
+  user: Awaited<ReturnType<typeof localApi.listDeskUsers>>[number],
+) {
+  const sameEmail = [...byId.values()].find(
+    (row) => row.email && user.email && row.email.toLowerCase() === user.email.toLowerCase(),
+  );
+  if (sameEmail && sameEmail.id !== user.id) byId.delete(sameEmail.id);
+  const prev = sameEmail;
+  byId.set(user.id, {
+    ...user,
+    name: user.name || prev?.name || "Trader",
+    email: user.email || prev?.email || "",
+    createdAt: user.createdAt || prev?.createdAt || "",
+    balance: user.balance || prev?.balance || 0,
+    openPositions: user.openPositions || prev?.openPositions || 0,
+    pendingDeposits: user.pendingDeposits || prev?.pendingDeposits || 0,
+    role: user.role === "admin" || prev?.role === "admin" ? "admin" : "user",
+    lastLogin: user.lastLogin || prev?.lastLogin || null,
+    status: user.status === "frozen" || prev?.status === "frozen" ? "frozen" : "active",
+  });
 }
 export async function adminCredit(input: Parameters<typeof localApi.adminCredit>[0]) {
   return api().adminCredit(input);
