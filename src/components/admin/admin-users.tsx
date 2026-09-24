@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { collection, onSnapshot, query } from "firebase/firestore";
-import { db } from "@/lib/firebase/db"; // Aapki firebase config file
+import { db } from "@/lib/firebase/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,10 +25,20 @@ export function AdminUsers({ onChange }: { onChange: () => void }) {
     const unsubscribe = onSnapshot(
       qUsers,
       (snapshot) => {
-        const usersList: DeskUser[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as DeskUser[];
+        const usersList: DeskUser[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name || "Trader",
+            email: data.email || "",
+            balance: typeof data.balance === "number" ? data.balance : 0,
+            role: data.role || "user",
+            status: data.status || "active",
+            openPositions: data.openPositions || 0,
+            pendingDeposits: data.pendingDeposits || 0,
+            lastLogin: data.lastLogin || data.LastLogin || "",
+          } as DeskUser;
+        });
         setRows(usersList);
       },
       (err) => {
