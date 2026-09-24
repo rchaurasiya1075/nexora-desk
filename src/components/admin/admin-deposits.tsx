@@ -4,16 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { listAllDeposits, reviewDeposit } from "@/lib/ops/api";
+import { watchDeposits } from "@/lib/firebase/desk";
 import type { DepositRequest } from "@/lib/ops/types";
 import { formatAmount } from "@/lib/ops/money";
 import { formatMoney } from "@/lib/utils";
 
 export function AdminDeposits({ onChange }: { onChange: () => void }) {
   const [rows, setRows] = useState<DepositRequest[]>([]);
+  const [remote, setRemote] = useState<DepositRequest[]>([]);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [busy, setBusy] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [usd, setUsd] = useState<Record<number, string>>({});
+  const [ruleNote, setRuleNote] = useState<string | null>(null);
 
   async function load() {
     const data = await listAllDeposits({
@@ -23,8 +26,29 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
   }
 
   useEffect(() => {
-    void load().catch(() => toast.error("Could not load deposits."));
+    void load().catch(() => undefined);
   }, [filter]);
+
+  useEffect(() => {
+    return watchDeposits(
+      (list) => {
+        setRemote(list);
+        setRuleNote(null);
+      },
+      () => {
+        setRuleNote(
+          "Firestore deposits are hidden from this login. In Rules, set deposits allow read: if true; and allow update: if true; then Publish.",
+        );
+      },
+    );
+  }, []);
+
+  const merged = new Map<string, DepositRequest>();
+  for (const row of rows) merged.set(row.docId || String(row.id), row);
+  for (const row of remote) merged.set(row.docId || String(row.id), row);
+  const visible = [...merged.values()]
+    .filter((row) => filter === "all" || row.status === filter)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   async function act(row: DepositRequest, action: "approve" | "reject") {
     setBusy(row.id);
@@ -33,6 +57,7 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
       await reviewDeposit({
         data: {
           id: row.id,
+          docId: row.docId,
           action,
           usdCredit: override ? Number(override) : undefined,
           adminNote: notes[row.id],
@@ -42,7 +67,12 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
       await load();
       onChange();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Review failed.");
+      const text = err instanceof Error ? err.message : "Review failed.";
+      toast.error(
+        /permission/i.test(text)
+          ? "Rules block deposit updates. Set allow update: if true on deposits, then Publish."
+          : text,
+      );
     } finally {
       setBusy(null);
     }
@@ -64,13 +94,14 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
           </button>
         ))}
       </div>
-      {rows.length === 0 ? (
+      {ruleNote && <p className="mt-3 text-sm text-sell">{ruleNote}</p>}
+      {visible.length === 0 ? (
         <p className="mt-8 text-sm text-muted">No requests in this view.</p>
       ) : (
         <ul className="mt-4 space-y-3">
-          {rows.map((row) => (
+          {visible.map((row) => (
             <li
-              key={row.id}
+              key={row.docId || row.id}
               className="rounded-xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -82,8 +113,8 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
                     {row.userName || row.userEmail || row.userId} · {row.methodTitle} · {row.payerName}
                   </p>
                   <p className="mt-1 text-[12px] text-subtle">
-                    Ref {row.reference}
-                    {row.note ? ` · ${row.note}` : ""} · #{row.id}
+                    Ref {row.reference || "—"}
+                    {row.note ? ` · ${row.note}` : ""} · {row.docId || row.id}
                   </p>
                 </div>
                 <Status status={row.status} />

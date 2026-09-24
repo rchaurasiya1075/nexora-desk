@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/firebase/gates";
+import { watchDeposits } from "@/lib/firebase/desk";
 import { useDeskSession } from "@/lib/firebase/session";
 import { INSTRUMENTS } from "@/lib/market/instruments";
 import { market } from "@/lib/market/engine";
@@ -82,10 +83,28 @@ export function AdminConsole() {
   const [users, setUsers] = useState<DeskUser[]>([]);
   const [userNote, setUserNote] = useState<string | null>(null);
   const [deposits, setDeposits] = useState<DepositRequest[]>([]);
+  const [depositNote, setDepositNote] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
 
   useEffect(() => subscribeControl(bump), []);
+
+  useEffect(() => {
+    return watchDeposits(
+      (rows) => {
+        setDeposits((prev) => {
+          const map = new Map(prev.map((row) => [row.docId || String(row.id), row]));
+          for (const row of rows) map.set(row.docId || String(row.id), row);
+          return [...map.values()];
+        });
+        setDepositNote(null);
+      },
+      () =>
+        setDepositNote(
+          "Deposits collection is locked for this login. Rules → deposits → allow read: if true; allow update: if true; then Publish.",
+        ),
+    );
+  }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -237,6 +256,7 @@ export function AdminConsole() {
               withdrawals={control.withdrawals}
               rate={control.settings.inrPerUsd}
               adminName={adminName}
+              note={depositNote}
               onDone={bump}
             />
           )}
@@ -419,12 +439,14 @@ function DepositsPane({
   withdrawals,
   rate,
   adminName,
+  note,
   onDone,
 }: {
   deposits: DepositRequest[];
   withdrawals: ReturnType<typeof readControl>["withdrawals"];
   rate: number;
   adminName: string;
+  note: string | null;
   onDone: () => void;
 }) {
   const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all" | "withdrawals">("pending");
@@ -433,6 +455,7 @@ function DepositsPane({
     <div>
       <h1 className="font-display text-3xl">Deposits</h1>
       <p className="mt-2 text-sm text-muted">INR to paper USD uses the settings rate: ₹{rate} = $1.</p>
+      {note && <p className="mt-2 text-sm text-sell">{note}</p>}
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         {(["pending", "approved", "rejected", "all", "withdrawals"] as const).map((t) => (
           <button
@@ -448,12 +471,12 @@ function DepositsPane({
       {tab !== "withdrawals" && (
         <ul className="mt-4 space-y-3">
           {rows.map((d) => (
-            <li key={d.id} className="rounded-sm border border-white/10 p-4 text-sm">
+            <li key={d.docId || d.id} className="rounded-sm border border-white/10 p-4 text-sm">
               <p>
-                {d.userName} · {d.userEmail}
+                {d.userName || d.userId} · {d.userEmail || d.methodTitle}
               </p>
               <p className="mt-1">
-                {d.currency} {d.amount} · ref {d.reference || "—"} · {new Date(d.createdAt).toLocaleString("en-IN")}
+                {d.currency} {d.amount} · UTR {d.reference || "—"} · {d.createdAt ? new Date(d.createdAt).toLocaleString("en-IN") : ""}
               </p>
               <p className="text-muted">Paper credit {formatMoney(d.usdCredit)} · {d.status}</p>
               {d.status === "pending" && (
@@ -461,9 +484,9 @@ function DepositsPane({
                   <Button
                     type="button"
                     onClick={() => {
-                      void reviewDeposit({ data: { id: d.id, action: "approve" } })
+                      void reviewDeposit({ data: { id: d.id, docId: d.docId, action: "approve", usdCredit: d.usdCredit } })
                         .then((res) => {
-                          audit(adminName, "DEPOSIT_APPROVE", String(d.id), `$${res.usdCredit ?? d.usdCredit}`);
+                          audit(adminName, "DEPOSIT_APPROVE", d.docId || String(d.id), `$${res.usdCredit ?? d.usdCredit}`);
                           toast.success("Credited");
                           onDone();
                         })
@@ -476,7 +499,7 @@ function DepositsPane({
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      void reviewDeposit({ data: { id: d.id, action: "reject" } })
+                      void reviewDeposit({ data: { id: d.id, docId: d.docId, action: "reject" } })
                         .then(() => {
                           audit(adminName, "DEPOSIT_REJECT", String(d.id), d.userEmail ?? "");
                           onDone();

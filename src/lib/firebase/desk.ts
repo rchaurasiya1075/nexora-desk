@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   query,
   runTransaction,
   setDoc,
@@ -274,26 +275,75 @@ export async function claimAdmin(): Promise<MeOps> {
 
 function asRequest(id: string, data: Record<string, unknown>): DepositRequest {
   const status =
-    data.status === "approved" || data.status === "rejected" ? data.status : "pending";
+    data.status === "approved" || data.status === "rejected" || data.status === "completed"
+      ? data.status === "completed"
+        ? "approved"
+        : data.status
+      : "pending";
+  const numeric = Number(data.id);
+  const docNumeric = Number(id);
+  const idFromData = Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+  const idFromDoc = Number.isFinite(docNumeric) && String(docNumeric) === id ? docNumeric : 0;
   return {
-    id: Number(id) || Number(data.id) || 0,
+    id: idFromData || idFromDoc || stableId(id),
+    docId: id,
     userId: String(data.userId || ""),
     userName: (data.userName as string) ?? null,
     userEmail: (data.userEmail as string) ?? null,
     methodId: data.methodId == null ? null : Number(data.methodId),
-    methodKind: String(data.methodKind || ""),
-    methodTitle: String(data.methodTitle || ""),
-    amount: Number(data.amount) || 0,
-    currency: String(data.currency || "USD"),
-    usdCredit: Number(data.usdCredit) || 0,
+    methodKind: String(data.methodKind || data.paymentMethod || ""),
+    methodTitle: String(data.methodTitle || data.paymentMethod || "Deposit"),
+    amount: Number(data.amount ?? data.amountLocal) || 0,
+    currency: String(data.currency || data.currencyLocal || "USD"),
+    usdCredit: Number(data.usdCredit ?? data.amountUSD) || 0,
     payerName: String(data.payerName || ""),
-    reference: String(data.reference || ""),
+    reference: String(data.reference || data.utrNumber || ""),
     note: (data.note as string) ?? null,
     status,
     adminNote: (data.adminNote as string) ?? null,
     createdAt: String(data.createdAt || ""),
     reviewedAt: (data.reviewedAt as string) ?? null,
   };
+}
+
+function stableId(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return hash || 1;
+}
+
+export async function syncDepositStatus(
+  docId: string,
+  action: "approve" | "reject",
+  usdCredit?: number,
+) {
+  await updateDoc(doc(db, "deposits", docId), {
+    status: action === "approve" ? "approved" : "rejected",
+    reviewedAt: new Date().toISOString(),
+    ...(usdCredit != null ? { usdCredit, amountUSD: usdCredit } : {}),
+  });
+  return {
+    ok: true as const,
+    status: action === "approve" ? ("approved" as const) : ("rejected" as const),
+    usdCredit,
+  };
+}
+
+export function watchDeposits(
+  onRows: (rows: DepositRequest[]) => void,
+  onError?: (err: Error) => void,
+) {
+  return onSnapshot(
+    collection(db, "deposits"),
+    (snap) => {
+      onRows(
+        snap.docs
+          .map((row) => asRequest(row.id, row.data()))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      );
+    },
+    (err) => onError?.(err),
+  );
 }
 
 export async function getAdminOverview(): Promise<AdminOverview> {
@@ -411,11 +461,16 @@ export async function createDepositRequest(input: {
       methodId: method.id,
       methodKind: method.kind,
       methodTitle: method.title,
+      paymentMethod: method.title,
       amount,
+      amountLocal: amount,
       currency: method.currency,
+      currencyLocal: method.currency,
       usdCredit: usd,
+      amountUSD: usd,
       payerName,
       reference,
+      utrNumber: reference,
       note: String(payload.note || "").trim().slice(0, 200) || null,
       status: "pending",
       adminNote: null,
@@ -452,8 +507,8 @@ export async function reviewDeposit(input: {
   const meta = await loadMeta();
   if (!isAdmin(meta, uid)) throw new Error("Admin only.");
   const payload = dataOf(input);
-  const id = Number(payload.id);
-  const ref = doc(db, "deposits", String(id));
+  const docId = String(payload.docId || payload.id || "");
+  const ref = doc(db, "deposits", docId);
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error("Request not found.");
   const row = asRequest(snap.id, snap.data());
@@ -476,10 +531,11 @@ export async function reviewDeposit(input: {
       : row.usdCredit;
   if (usd < MIN_REQUEST_USD) throw new Error("Credit is too small.");
   if (usd > MAX_REQUEST_USD) throw new Error("Credit is above the request cap.");
-  await creditUserBalance(row.userId, usd, "deposit", `Approved #${id} · ${row.currency} ${row.amount}`);
+  await creditUserBalance(row.userId, usd, "deposit", `Approved #${docId} · ${row.currency} ${row.amount}`);
   await updateDoc(ref, {
     status: "approved",
     usdCredit: usd,
+    amountUSD: usd,
     adminNote: note,
     reviewedAt: new Date().toISOString(),
     adminId: uid,

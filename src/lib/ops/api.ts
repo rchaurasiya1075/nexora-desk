@@ -41,6 +41,10 @@ export async function listAllDeposits(input?: Parameters<typeof localApi.listAll
   return api().listAllDeposits(input);
 }
 export async function reviewDeposit(input: Parameters<typeof localApi.reviewDeposit>[0]) {
+  const docId = input.data.docId;
+  if (docId && !/^\d+$/.test(docId)) {
+    return firebaseApi.syncDepositStatus(docId, input.data.action, input.data.usdCredit);
+  }
   return api().reviewDeposit(input);
 }
 export async function listDeskUsers() {

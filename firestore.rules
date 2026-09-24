@@ -28,7 +28,8 @@ service cloud.firestore {
     match /deposits/{id} {
       allow read: if true;
       allow create: if request.auth != null;
-      allow update, delete: if false;
+      allow update: if true;
+      allow delete: if false;
     }
   }
 }

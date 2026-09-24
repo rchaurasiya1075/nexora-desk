@@ -41,6 +41,7 @@ export type PaymentMethod = {
 
 export type DepositRequest = {
   id: number;
+  docId?: string;
   userId: string;
   userName: string | null;
   userEmail: string | null;

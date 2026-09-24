@@ -148,7 +148,7 @@ export async function listAllDeposits(input?: { data?: { status?: string } }) {
 }
 
 export async function reviewDeposit(input: {
-  data: { id: number; action: "approve" | "reject"; usdCredit?: number; adminNote?: string };
+  data: { id: number; docId?: string; action: "approve" | "reject"; usdCredit?: number; adminNote?: string };
 }) {
   const admin = requireAdmin();
   const payload = dataOf(input);

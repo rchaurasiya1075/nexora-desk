@@ -12,6 +12,7 @@ import { localChangePassword } from "@/lib/desk/local-store";
 import { useDeskSession } from "@/lib/firebase/session";
 import { useMarketTick } from "@/lib/market/use-market";
 import { listMyDeposits } from "@/lib/ops/api";
+import { watchDeposits } from "@/lib/firebase/desk";
 import { addSupport, readControl, requestWithdrawal, subscribeControl } from "@/lib/ops/control-store";
 import type { DepositRequest } from "@/lib/ops/types";
 import {
@@ -63,32 +64,41 @@ export function ProfileDesk() {
 
   useEffect(() => {
     if (!user) return;
-    let stop = false;
-    const pull = () => {
-      void listMyDeposits()
-        .then((rows) => {
-          if (stop) return;
-          for (const row of rows) {
-            const prev = seen.current.get(row.id);
-            if (prev && prev !== row.status && prefs?.alerts.funding) {
+    return watchDeposits(
+      (rows) => {
+        const mine = rows.filter((row) => row.userId === user.id);
+        setDeposits((prev) => {
+          const map = new Map(prev.map((row) => [row.docId || String(row.id), row]));
+          for (const row of mine) {
+            const prevStatus = seen.current.get(row.id);
+            if (prevStatus && prevStatus !== row.status && prefs?.alerts.funding) {
               toast.message(`Deposit ${row.status}`, {
                 description: `${row.methodTitle} · ${formatMoney(row.usdCredit)}`,
               });
             }
             seen.current.set(row.id, row.status);
+            map.set(row.docId || String(row.id), row);
           }
-          setDeposits(rows);
-          if (rows.some((row) => row.status === "approved")) void hydrateFromServer();
-        })
-        .catch(() => undefined);
-    };
-    pull();
-    const timer = setInterval(pull, 8000);
-    return () => {
-      stop = true;
-      clearInterval(timer);
-    };
+          return [...map.values()];
+        });
+        if (mine.some((row) => row.status === "approved")) void hydrateFromServer();
+      },
+      () => undefined,
+    );
   }, [user, hydrateFromServer, prefs?.alerts.funding]);
+
+  useEffect(() => {
+    if (!user) return;
+    void listMyDeposits()
+      .then((rows) => {
+        setDeposits((prev) => {
+          const map = new Map(prev.map((row) => [row.docId || String(row.id), row]));
+          for (const row of rows) map.set(row.docId || `local-${row.id}`, row);
+          return [...map.values()];
+        });
+      })
+      .catch(() => undefined);
+  }, [user, tick]);
 
   if (!user || !prefs) return null;
 
@@ -192,6 +202,8 @@ export function ProfileDesk() {
           <p className="mt-4 text-sm text-muted">
             Book currency is USD. {prefs.currency === "INR" ? `INR view uses ₹${rate} per dollar.` : "Switch the view under Security."}{" "}
             Open positions: {positions.length}. Floating P/L {formatSigned(snap.floating)}.
+            {deposits.some((row) => row.status === "approved") &&
+              ` Approved deposits ${show(deposits.filter((row) => row.status === "approved").reduce((sum, row) => sum + row.usdCredit, 0))}.`}
           </p>
           <Button className="mt-4" variant="outline" onClick={() => setSection("history")}>
             View full history
