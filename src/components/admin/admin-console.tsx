@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -86,12 +88,61 @@ export function AdminConsole() {
   useEffect(() => subscribeControl(bump), []);
 
   useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "users"),
+      (snap) => {
+        const live: DeskUser[] = snap.docs.map((row) => {
+          const data = row.data();
+          const status = String(data.status || "active");
+          return {
+            id: row.id,
+            name: String(data.name || "Trader"),
+            email: String(data.email || ""),
+            createdAt: String(data.createdAt || ""),
+            lastLogin: data.lastLogin ? String(data.lastLogin) : null,
+            balance: Number(data.balance) || 0,
+            status: status === "frozen" || status === "suspended" ? "frozen" : "active",
+            role: data.role === "admin" ? "admin" : "user",
+            pendingDeposits: Number(data.pendingDeposits) || 0,
+            openPositions: Number(data.openPositions) || 0,
+          };
+        });
+        setUsers((prev) => {
+          const map = new Map(prev.map((user) => [user.id, user]));
+          for (const row of live) {
+            const older = map.get(row.id);
+            map.set(row.id, {
+              ...older,
+              ...row,
+              createdAt: row.createdAt || older?.createdAt || "",
+              balance: row.balance || older?.balance || 0,
+              lastLogin: row.lastLogin || older?.lastLogin || null,
+            });
+          }
+          return [...map.values()].sort((a, b) =>
+            (b.lastLogin || b.createdAt).localeCompare(a.lastLogin || a.createdAt),
+          );
+        });
+        setUserNote(null);
+      },
+      () => {
+        setUserNote("Firestore users could not be loaded. Check that Rules are published.");
+      },
+    );
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
     void listDeskUsers()
       .then((rows) => {
-        setUsers(rows);
+        setUsers((prev) => {
+          const map = new Map(prev.map((user) => [user.id, user]));
+          for (const row of rows) map.set(row.id, { ...map.get(row.id), ...row });
+          return [...map.values()];
+        });
         setUserNote(firestoreDirectoryError() || directoryError());
       })
-      .catch(() => setUsers([]));
+      .catch(() => setUserNote("User list failed to load."));
     void listAllDeposits().then(setDeposits).catch(() => setDeposits([]));
   }, [tick]);
 

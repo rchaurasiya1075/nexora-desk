@@ -18,22 +18,28 @@ export function PositionsPanel() {
   const positions = useTradeStore((s) => s.positions);
   const pending = useTradeStore((s) => s.pending);
   const history = useTradeStore((s) => s.history);
+  const alerts = useTradeStore((s) => s.alerts);
   const closePosition = useTradeStore((s) => s.closePosition);
   const cancelPending = useTradeStore((s) => s.cancelPending);
   const select = useTradeStore((s) => s.select);
+  const lastToast = useTradeStore((s) => s.lastToast);
 
   return (
     <Tabs defaultValue="open" className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <TabsList>
+      <div className="flex items-center justify-between border-b border-border px-2 py-1">
+        <TabsList className="bg-transparent p-0">
           <TabsTrigger value="open">Positions ({positions.length})</TabsTrigger>
           <TabsTrigger value="pending">Orders ({pending.length})</TabsTrigger>
+          <TabsTrigger value="alerts">Price alerts ({alerts.length})</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
+        {lastToast && (
+          <p className="hidden truncate text-[11px] text-muted lg:block">{lastToast}</p>
+        )}
       </div>
       <TabsContent value="open" className="min-h-0 flex-1 overflow-auto">
         {positions.length === 0 ? (
-          <Empty text="No open positions. Use Buy or Sell to get filled at the live bid/ask." />
+          <Empty text="No open positions. Tap Sell or Buy on the watchlist or chart." />
         ) : (
           <table className="w-full min-w-[720px] text-left text-[12px]">
             <thead className="sticky top-0 bg-bg-elevated text-subtle">
@@ -93,6 +99,9 @@ export function PositionsPanel() {
           </ul>
         )}
       </TabsContent>
+      <TabsContent value="alerts" className="min-h-0 flex-1 overflow-auto">
+        <AlertDesk />
+      </TabsContent>
       <TabsContent value="history" className="min-h-0 flex-1 overflow-auto">
         {history.length === 0 ? (
           <Empty text="Closed trades will land here with realised P/L." />
@@ -124,6 +133,65 @@ export function PositionsPanel() {
         )}
       </TabsContent>
     </Tabs>
+  );
+}
+
+function AlertDesk() {
+  const symbol = useTradeStore((s) => s.selected);
+  const alerts = useTradeStore((s) => s.alerts);
+  const addAlert = useTradeStore((s) => s.addAlert);
+  const removeAlert = useTradeStore((s) => s.removeAlert);
+  const inst = getInstrument(symbol);
+  const q = market.getQuote(symbol);
+  const [price, setPrice] = useState("");
+
+  return (
+    <div className="p-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="block">
+          <span className="mb-1 block text-[11px] text-muted">
+            Alert on {inst.display} (now {formatPrice(q.mid, inst.digits)})
+          </span>
+          <Input
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder={formatPrice(q.mid, inst.digits)}
+            className="h-9 w-40"
+          />
+        </label>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const px = Number(price) || q.mid;
+            addAlert(symbol, px, px >= q.mid ? "above" : "below");
+            setPrice("");
+          }}
+        >
+          Set alert
+        </Button>
+      </div>
+      {alerts.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">No price alerts. Set a level to get a toast when the tape crosses it.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border">
+          {alerts.map((a) => {
+            const aInst = getInstrument(a.symbol);
+            return (
+              <li key={a.id} className="flex items-center justify-between py-2 text-[12px]">
+                <p>
+                  {aInst.display} {a.want} {formatPrice(a.price, aInst.digits)}
+                </p>
+                <Button size="sm" variant="ghost" onClick={() => removeAlert(a.id)}>
+                  Remove
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

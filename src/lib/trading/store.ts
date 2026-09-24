@@ -96,6 +96,7 @@ type TradeState = BookSlice & {
   applyBook: (book: BookSlice) => void;
   hydrateFromServer: () => Promise<void>;
   persistNow: () => void;
+  loadPrefs: () => void;
   select: (symbol: string) => void;
   setPricing: (mode: AccountPricing) => void;
   resetDemo: () => void;
@@ -118,7 +119,22 @@ type TradeState = BookSlice & {
   closePosition: (id: string, lots?: number) => { ok: true } | { ok: false; error: string };
   updateSlTp: (id: string, sl: number | null, tp: number | null) => void;
   cancelPending: (id: string) => void;
+  oneClick: boolean;
+  clickSize: number;
+  setOneClick: (on: boolean) => void;
+  setClickSize: (n: number) => void;
+  alerts: PriceAlert[];
+  addAlert: (symbol: string, price: number, want: "above" | "below") => void;
+  removeAlert: (id: string) => void;
   onTick: () => void;
+};
+
+export type PriceAlert = {
+  id: string;
+  symbol: string;
+  price: number;
+  want: "above" | "below";
+  createdAt: number;
 };
 
 function openPosition(
@@ -149,6 +165,26 @@ function openPosition(
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function readPref<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function writePref(key: string, value: unknown) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* ignore quota */
+  }
+}
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer);
@@ -186,6 +222,9 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
   pending: [],
   history: [],
   lastToast: null,
+  oneClick: false,
+  clickSize: 0.1,
+  alerts: [],
   setHydrated: () => set({ hydrated: true }),
   applyBook: (book) => {
     market.setPricing(book.pricing);
@@ -209,6 +248,13 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     }
   },
   persistNow: () => scheduleSave(),
+  loadPrefs: () => {
+    set({
+      oneClick: readPref("nx-1click", false),
+      clickSize: readPref("nx-click-size", 0.1),
+      alerts: readPref<PriceAlert[]>("nx-alerts", []),
+    });
+  },
   select: (symbol) => {
     set({ selected: symbol });
     scheduleSave();
@@ -314,6 +360,29 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
   cancelPending: (id) => {
     set({ pending: get().pending.filter((o) => o.id !== id) });
     scheduleSave();
+  },
+  setOneClick: (on) => {
+    writePref("nx-1click", on);
+    set({ oneClick: on });
+  },
+  setClickSize: (n) => {
+    const size = Math.min(50, Math.max(0.01, n));
+    writePref("nx-click-size", size);
+    set({ clickSize: size });
+  },
+  addAlert: (symbol, price, want) => {
+    if (!(price > 0)) return;
+    const next: PriceAlert[] = [
+      ...get().alerts,
+      { id: uid(), symbol, price, want, createdAt: Date.now() },
+    ].slice(-24);
+    writePref("nx-alerts", next);
+    set({ alerts: next, lastToast: `Alert set on ${symbol} ${want} ${price}` });
+  },
+  removeAlert: (id) => {
+    const next = get().alerts.filter((a) => a.id !== id);
+    writePref("nx-alerts", next);
+    set({ alerts: next });
   },
   onTick: () => {
     const state = get();
@@ -448,6 +517,27 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     }
 
     if (dirty) scheduleSave();
+
+    const liveAlerts = get();
+    if (liveAlerts.alerts.length) {
+      const hit: PriceAlert[] = [];
+      for (const alert of liveAlerts.alerts) {
+        const q = market.getQuote(alert.symbol);
+        if (!q) continue;
+        const crossed =
+          alert.want === "above" ? q.mid >= alert.price : q.mid <= alert.price;
+        if (crossed) hit.push(alert);
+      }
+      if (hit.length) {
+        const remain = liveAlerts.alerts.filter((a) => !hit.some((h) => h.id === a.id));
+        writePref("nx-alerts", remain);
+        const first = hit[0]!;
+        set({
+          alerts: remain,
+          lastToast: `Price alert: ${first.symbol} ${first.want} ${first.price}`,
+        });
+      }
+    }
   },
 }));
 

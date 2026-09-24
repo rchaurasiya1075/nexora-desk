@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { UserButton } from "@/lib/auth/gates";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { UserButton } from "@/lib/firebase/gates";
+import { useDeskSession } from "@/lib/firebase/session";
 import { Button } from "@/components/ui/button";
 import { useOps } from "@/lib/ops/use-ops";
 
 export function AuthSlot() {
-  const { user, isPending } = useCurrentUserState();
+  const { user, isPending } = useDeskSession();
   const ops = useOps();
   if (isPending) {
     return <div className="h-11 w-24 animate-pulse rounded-sm bg-bg-subtle" />;
@@ -21,7 +21,7 @@ export function AuthSlot() {
         <Button asChild size="sm" variant="outline">
           <Link to="/account">Deposit</Link>
         </Button>
-        <div className="max-w-[160px] truncate text-fg [&_span]:text-fg">
+        <div className="max-w-[160px] truncate text-fg">
           <UserButton />
         </div>
       </div>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { getMyOps } from "@/lib/ops/api";
 import type { MeOps } from "@/lib/ops/types";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { useDeskSession } from "@/lib/firebase/session";
 
 export function useOps(): MeOps & { loading: boolean; reload: () => void } {
-  const { user, isPending } = useCurrentUserState();
+  const { user, isPending } = useDeskSession();
   const userId = user?.id ?? "";
   const [ops, setOps] = useState<MeOps>({
     userId: "",
