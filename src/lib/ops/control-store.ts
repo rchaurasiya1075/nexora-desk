@@ -1,5 +1,3 @@
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
 import { market } from "@/lib/market/engine";
 import { getInstrument, INSTRUMENTS } from "@/lib/market/instruments";
 import {
@@ -133,40 +131,14 @@ function applyPins(pins: Record<string, PricePin>) {
   }
 }
 
-async function pushRemote(state: ControlState) {
-  try {
-    await setDoc(
-      doc(db, "desk", "markets"),
-      {
-        pins: state.pins,
-        settings: state.settings,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
-  } catch {
-    /* rules or offline — local tape still holds */
-  }
+async function pushRemote(_state: ControlState) {
+  /* Desk market pins stay in this browser. Firestore rules do not allow desk/markets. */
 }
 
 export function bootControl() {
   if (booted || typeof window === "undefined") return;
   booted = true;
   applyPins(load().pins);
-  try {
-    onSnapshot(doc(db, "desk", "markets"), (snap) => {
-      if (!snap.exists()) return;
-      const remote = snap.data() as { pins?: Record<string, PricePin> };
-      if (!remote.pins) return;
-      const local = load();
-      local.pins = remote.pins;
-      localStorage.setItem(KEY, JSON.stringify(local));
-      applyPins(remote.pins);
-      for (const fn of listeners) fn();
-    });
-  } catch {
-    /* firestore optional */
-  }
 }
 
 export function subscribeControl(fn: () => void) {

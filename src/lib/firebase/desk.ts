@@ -333,6 +333,11 @@ export function watchDeposits(
   onRows: (rows: DepositRequest[]) => void,
   onError?: (err: Error) => void,
 ) {
+  if (!firebaseAuth.currentUser) {
+    onRows([]);
+    onError?.(new Error("permission-denied"));
+    return () => undefined;
+  }
   return onSnapshot(
     collection(db, "deposits"),
     (snap) => {
