@@ -35,6 +35,7 @@ import {
   subscribeControl,
 } from "@/lib/ops/control-store";
 import { directoryError } from "@/lib/ops/directory";
+import { firestoreDirectoryError } from "@/lib/ops/api";
 import type { DepositRequest, DeskUser } from "@/lib/ops/types";
 import { formatMoney } from "@/lib/utils";
 
@@ -88,7 +89,7 @@ export function AdminConsole() {
     void listDeskUsers()
       .then((rows) => {
         setUsers(rows);
-        setUserNote(directoryError());
+        setUserNote(firestoreDirectoryError() || directoryError());
       })
       .catch(() => setUsers([]));
     void listAllDeposits().then(setDeposits).catch(() => setDeposits([]));
@@ -254,7 +255,31 @@ function UsersPane({
       <p className="mt-2 text-sm text-muted">
         {users.length} signed-in account{users.length === 1 ? "" : "s"}. Name, email, id, created, last login, balance, and open trades.
       </p>
-      {note && <p className="mt-2 text-sm text-sell">{note}</p>}
+      {note && (
+        <div className="mt-3 max-w-3xl rounded-sm border border-sell/40 bg-sell/10 p-3 text-sm">
+          <p>{note}</p>
+          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-[11px] leading-relaxed text-fg">{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+    }
+    match /user_details/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+    }
+    match /{path=**}/user_details/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+    }
+  }
+}`}</pre>
+        </div>
+      )}
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="text-[11px] uppercase tracking-wide text-muted">

@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -147,27 +148,88 @@ export async function ensureDeskSeeded(): Promise<Meta> {
 }
 
 export async function ensureTraderProfile(user: User) {
-  await ensureDeskSeeded();
-  const ref = doc(db, "traders", user.uid);
-  const existing = await getDoc(ref);
   const name = user.displayName || user.email?.split("@")[0] || "Trader";
   const email = user.email || "";
-  if (!existing.exists()) {
-    await setDoc(ref, {
-      name,
-      email,
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-      role: "user",
-    });
-    await setDoc(doc(db, "accounts", user.uid), emptyBook());
-    return;
+  const now = new Date().toISOString();
+  const profile = {
+    name,
+    email,
+    role: "user",
+    status: "active",
+    lastLogin: now,
+  };
+  await setDoc(doc(db, "users", user.uid), profile, { merge: true });
+  await setDoc(doc(db, "user_details", user.uid), profile, { merge: true });
+  try {
+    await ensureDeskSeeded();
+    const ref = doc(db, "traders", user.uid);
+    const existing = await getDoc(ref);
+    if (!existing.exists()) {
+      await setDoc(ref, { name, email, createdAt: now, lastLogin: now, role: "user" });
+      await setDoc(doc(db, "accounts", user.uid), emptyBook());
+      return;
+    }
+    await setDoc(ref, { name, email, lastLogin: now }, { merge: true });
+  } catch {
+    /* desk collections stay blocked until rules are published */
   }
-  await setDoc(
-    ref,
-    { name, email, lastLogin: new Date().toISOString() },
-    { merge: true },
-  );
+}
+
+function profileRow(id: string, data: Record<string, unknown>): DeskUser {
+  const raw = String(data.status || "active");
+  return {
+    id,
+    name: String(data.name || "Trader"),
+    email: String(data.email || ""),
+    createdAt: String(data.createdAt || ""),
+    lastLogin: data.lastLogin ? String(data.lastLogin) : null,
+    balance: Number(data.balance) || 0,
+    status: raw === "frozen" || raw === "suspended" ? "frozen" : "active",
+    role: data.role === "admin" ? "admin" : "user",
+    pendingDeposits: 0,
+    openPositions: Number(data.openPositions || data.trades) || 0,
+  };
+}
+
+function mergeProfile(prev: DeskUser | undefined, next: DeskUser): DeskUser {
+  if (!prev) return next;
+  return {
+    ...prev,
+    name: next.name && next.name !== "Trader" ? next.name : prev.name,
+    email: next.email || prev.email,
+    createdAt: next.createdAt || prev.createdAt,
+    lastLogin: next.lastLogin || prev.lastLogin,
+    balance: next.balance || prev.balance,
+    status: next.status === "frozen" || prev.status === "frozen" ? "frozen" : "active",
+    role: next.role === "admin" || prev.role === "admin" ? "admin" : "user",
+    openPositions: next.openPositions || prev.openPositions,
+    pendingDeposits: next.pendingDeposits || prev.pendingDeposits,
+  };
+}
+
+/** Reads the Firestore records already in the console: users and user_details. */
+export async function listFirestoreProfiles(): Promise<DeskUser[]> {
+  const map = new Map<string, DeskUser>();
+  const take = (id: string, data: Record<string, unknown>) => {
+    if (!id) return;
+    map.set(id, mergeProfile(map.get(id), profileRow(id, data)));
+  };
+  const [usersSnap, detailsSnap] = await Promise.all([
+    getDocs(collection(db, "users")),
+    getDocs(collection(db, "user_details")),
+  ]);
+  usersSnap.forEach((row) => take(row.id, row.data()));
+  detailsSnap.forEach((row) => take(row.id, row.data()));
+  try {
+    const nested = await getDocs(collectionGroup(db, "user_details"));
+    nested.forEach((row) => {
+      const parent = row.ref.parent.parent?.id;
+      take(parent && parent.length > 8 ? parent : row.id, row.data());
+    });
+  } catch {
+    /* top-level collections are enough when the group query is not allowed */
+  }
+  return [...map.values()];
 }
 
 function requireUid() {

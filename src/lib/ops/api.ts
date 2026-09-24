@@ -4,6 +4,12 @@ import { fetchDirectory, profileFromDesk, publishProfiles, toDeskUser } from "@/
 import * as firebaseApi from "@/lib/firebase/desk";
 import * as localApi from "@/lib/ops/local-api";
 
+let firestoreListError: string | null = null;
+
+export function firestoreDirectoryError() {
+  return firestoreListError;
+}
+
 function api() {
   return (getAuthMode() === "local" ? localApi : firebaseApi) as typeof localApi;
 }
@@ -51,9 +57,18 @@ export async function listDeskUsers() {
     /* directory is best-effort */
   }
   try {
+    for (const user of await firebaseApi.listFirestoreProfiles()) mergeUser(byId, user);
+    firestoreListError = null;
+  } catch (err) {
+    const text = err instanceof Error ? err.message : String(err);
+    firestoreListError = /permission/i.test(text)
+      ? "Firestore rules are locked, so Rohit and other saved users cannot be read. Firestore → Rules → replace the file → Publish."
+      : text;
+  }
+  try {
     for (const user of await firebaseApi.listVisibleTraders()) mergeUser(byId, user);
   } catch {
-    /* Firestore rules still deny the list */
+    /* older traders collection may still be denied */
   }
   for (const user of await fetchDirectory()) mergeUser(byId, toDeskUser(user));
   return [...byId.values()].sort((a, b) =>
