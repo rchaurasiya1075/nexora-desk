@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/firebase/gates";
 import { watchDeposits } from "@/lib/firebase/desk";
+import { balanceOverride } from "@/lib/ops/balance-adjust";
 import { useDeskSession } from "@/lib/firebase/session";
 import { INSTRUMENTS } from "@/lib/market/instruments";
 import { market } from "@/lib/market/engine";
@@ -119,7 +120,7 @@ export function AdminConsole() {
             email: String(data.email || ""),
             createdAt: String(data.createdAt || ""),
             lastLogin: data.lastLogin ? String(data.lastLogin) : null,
-            balance: Number(data.balance) || 0,
+            balance: balanceOverride(row.id) ?? (Number(data.balance) || 0),
             status: status === "frozen" || status === "suspended" ? "frozen" : "active",
             role: data.role === "admin" ? "admin" : "user",
             pendingDeposits: Number(data.pendingDeposits) || 0,
@@ -134,7 +135,7 @@ export function AdminConsole() {
               ...older,
               ...row,
               createdAt: row.createdAt || older?.createdAt || "",
-              balance: row.balance || older?.balance || 0,
+              balance: balanceOverride(row.id) ?? (row.balance || older?.balance || 0),
               lastLogin: row.lastLogin || older?.lastLogin || null,
             });
           }
@@ -605,10 +606,16 @@ function BalancePane({
           const n = Number(amount);
           if (!userId || !Number.isFinite(n)) return;
           const before = user?.balance ?? 0;
-          void adminCredit({ data: { userId, amount: sign * n, note: reason } })
+          void adminCredit({
+            data: { userId, amount: sign * n, note: reason, currentBalance: before },
+          })
             .then((res) => {
               audit(adminName, sign > 0 ? "CREDIT" : "DEBIT", user?.email ?? userId, `Before ${before} → ${res.balance}. ${reason}`);
-              toast.success(`After ${formatMoney(res.balance)}`);
+              toast.success(
+                res.saved
+                  ? `After ${formatMoney(res.balance)}`
+                  : `After ${formatMoney(res.balance)}. Firestore did not save — users rules still block admin updates.`,
+              );
               onDone();
             })
             .catch((err) => toast.error(err instanceof Error ? err.message : "Failed"));

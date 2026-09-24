@@ -34,7 +34,7 @@ export function AdminUsers({ onChange }: { onChange: () => void }) {
     setBusy(user.id);
     try {
       await adminCredit({
-        data: { userId: user.id, amount, note: "Admin wallet credit" },
+        data: { userId: user.id, amount, note: "Admin wallet credit", currentBalance: user.balance },
       });
       toast.success(`${amount > 0 ? "Credited" : "Debited"} ${user.email}`);
       await load();

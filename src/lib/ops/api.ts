@@ -1,5 +1,6 @@
 import { getAuthMode } from "@/lib/desk/auth-mode";
 import { loadDesk } from "@/lib/desk/local-store";
+import { adjustUserBalance, balanceOverride } from "@/lib/ops/balance-adjust";
 import { fetchDirectory, profileFromDesk, publishProfiles, toDeskUser } from "@/lib/ops/directory";
 import * as firebaseApi from "@/lib/firebase/desk";
 import * as localApi from "@/lib/ops/local-api";
@@ -94,7 +95,7 @@ function mergeUser(
     name: user.name || prev?.name || "Trader",
     email: user.email || prev?.email || "",
     createdAt: user.createdAt || prev?.createdAt || "",
-    balance: user.balance || prev?.balance || 0,
+    balance: balanceOverride(user.id) ?? (user.balance || prev?.balance || 0),
     openPositions: user.openPositions || prev?.openPositions || 0,
     pendingDeposits: user.pendingDeposits || prev?.pendingDeposits || 0,
     role: user.role === "admin" || prev?.role === "admin" ? "admin" : "user",
@@ -102,8 +103,15 @@ function mergeUser(
     status: user.status === "frozen" || prev?.status === "frozen" ? "frozen" : "active",
   });
 }
-export async function adminCredit(input: Parameters<typeof localApi.adminCredit>[0]) {
-  return api().adminCredit(input);
+export async function adminCredit(input: {
+  data: { userId: string; amount: number; note?: string; currentBalance?: number };
+}) {
+  return adjustUserBalance(
+    input.data.userId,
+    Number(input.data.amount),
+    input.data.note || "Admin adjustment",
+    input.data.currentBalance ?? 0,
+  );
 }
 export async function setUserFrozen(input: Parameters<typeof localApi.setUserFrozen>[0]) {
   return api().setUserFrozen(input);
