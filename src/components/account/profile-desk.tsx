@@ -171,8 +171,9 @@ export function ProfileDesk() {
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <WalletCard
             className="lg:col-span-2"
-            equity={show(snap.equity)}
-            free={show(Math.max(snap.free, 0))}
+            cash={show(balance)}
+            openPnl={formatSigned(snap.floating)}
+            free={show(Math.max(balance - snap.used, 0))}
             used={show(snap.used)}
             currency={prefs.currency}
             onAdd={() => setMoney("in")}
@@ -192,8 +193,9 @@ export function ProfileDesk() {
       {section === "wallet" && (
         <div className="mt-6">
           <WalletCard
-            equity={show(snap.equity)}
-            free={show(Math.max(snap.free, 0))}
+            cash={show(balance)}
+            openPnl={formatSigned(snap.floating)}
+            free={show(Math.max(balance - snap.used, 0))}
             used={show(snap.used)}
             currency={prefs.currency}
             onAdd={() => setMoney("in")}
@@ -270,7 +272,8 @@ export function ProfileDesk() {
 }
 
 function WalletCard({
-  equity,
+  cash,
+  openPnl,
   free,
   used,
   currency,
@@ -278,7 +281,8 @@ function WalletCard({
   onOut,
   className,
 }: {
-  equity: string;
+  cash: string;
+  openPnl: string;
   free: string;
   used: string;
   currency: "USD" | "INR";
@@ -288,15 +292,16 @@ function WalletCard({
 }) {
   return (
     <section className={cn("rounded-xl bg-bg-elevated p-5 shadow-[var(--shadow-border)]", className)}>
-      <p className="text-[11px] uppercase tracking-wide text-subtle">Portfolio equity · {currency}</p>
-      <p className="mt-1 font-display text-5xl num">{equity}</p>
+      <p className="text-[11px] uppercase tracking-wide text-subtle">Balance · {currency}</p>
+      <p className="mt-1 font-display text-5xl num">{cash}</p>
+      <p className="mt-2 text-sm text-muted">Open P/L {openPnl}. This does not change the balance until you close.</p>
       <dl className="mt-5 grid grid-cols-2 gap-3">
         <div>
-          <dt className="text-[11px] uppercase tracking-wide text-subtle">Available margin</dt>
+          <dt className="text-[11px] uppercase tracking-wide text-subtle">Available</dt>
           <dd className="mt-1 text-lg num">{free}</dd>
         </div>
         <div>
-          <dt className="text-[11px] uppercase tracking-wide text-subtle">Used margin</dt>
+          <dt className="text-[11px] uppercase tracking-wide text-subtle">In trades</dt>
           <dd className="mt-1 text-lg num">{used}</dd>
         </div>
       </dl>

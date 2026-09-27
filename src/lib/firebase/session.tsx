@@ -22,7 +22,6 @@ import { ensureAuthPersistence, firebaseAuth } from "./client";
 import { ensureTraderProfile } from "./desk";
 import { watchWallet } from "@/lib/ops/balance-adjust";
 import { profileFromDesk, publishProfiles } from "@/lib/ops/directory";
-import { useTradeStore } from "@/lib/trading/store";
 import { firebaseMessage, isAuthNotConfigured } from "./errors";
 import { setAuthMode } from "@/lib/desk/auth-mode";
 import {
@@ -125,9 +124,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   const walletId = user?.id;
   useEffect(() => {
     if (!walletId) return;
-    return watchWallet(walletId, (balance) => {
-      useTradeStore.setState({ balance, hydrated: true });
-    });
+    return watchWallet(walletId);
   }, [walletId]);
 
   const adoptLocal = useCallback((paper: LocalUser) => {

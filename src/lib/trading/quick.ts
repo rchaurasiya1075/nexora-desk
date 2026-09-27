@@ -13,6 +13,7 @@ export type QuickBet = {
   expiry: number;
   status: "open" | "win" | "loss" | "tie";
   settle: number | null;
+  posted: boolean;
 };
 
 const KEY = "morgan.quick.v1";
@@ -24,7 +25,10 @@ function read(): QuickBet[] {
   if (typeof window === "undefined") return [];
   try {
     const rows = JSON.parse(localStorage.getItem(KEY) || "[]") as QuickBet[];
-    cache = Array.isArray(rows) ? rows : [];
+    cache = (Array.isArray(rows) ? rows : []).map((bet) => ({
+      ...bet,
+      posted: bet.posted ?? bet.status !== "open",
+    }));
   } catch {
     cache = [];
   }
@@ -69,6 +73,7 @@ export function openQuickBet(input: { symbol: string; side: QuickSide; stake: nu
     expiry: Date.now() + input.seconds * 1000,
     status: "open",
     settle: null,
+    posted: false,
   };
   state.adjustCash(-bet.stake);
   write([bet, ...read()]);
@@ -85,16 +90,19 @@ export function settleQuick() {
     const up = px > bet.entry;
     const down = px < bet.entry;
     bet.settle = px;
-    if (!up && !down) {
-      bet.status = "tie";
-      useTradeStore.getState().adjustCash(bet.stake);
-    } else if ((bet.side === "call" && up) || (bet.side === "put" && down)) {
-      bet.status = "win";
-      useTradeStore.getState().adjustCash(bet.stake * (1 + bet.payout));
-    } else {
-      bet.status = "loss";
-    }
+    if (!up && !down) bet.status = "tie";
+    else if ((bet.side === "call" && up) || (bet.side === "put" && down)) bet.status = "win";
+    else bet.status = "loss";
     changed = true;
   }
   if (changed) write(rows);
+  let paid = false;
+  for (const bet of read()) {
+    if (bet.posted || bet.status === "open") continue;
+    bet.posted = true;
+    paid = true;
+    if (bet.status === "tie") useTradeStore.getState().adjustCash(bet.stake);
+    else if (bet.status === "win") useTradeStore.getState().adjustCash(Number((bet.stake * (1 + bet.payout)).toFixed(2)));
+  }
+  if (paid) write(read());
 }

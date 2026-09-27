@@ -93,21 +93,30 @@ export function QuickScreen() {
           Lower
         </button>
       </div>
-      <ul className="mt-2 max-h-24 space-y-1 overflow-auto text-xs">
-        {bets.slice(0, 4).map((bet) => {
+      <p className="mt-3 text-xs uppercase tracking-wide text-subtle">Quick history</p>
+      <ul className="mt-1 max-h-36 space-y-1 overflow-auto text-xs">
+        {bets.slice(0, 15).map((bet) => {
           const left = Math.max(0, Math.ceil((bet.expiry - now) / 1000));
           const item = getInstrument(bet.symbol);
+          const back = bet.stake * (1 + bet.payout);
+          const result =
+            bet.status === "open"
+              ? `${left}s`
+              : bet.status === "win"
+                ? `+${showMoney(back - bet.stake, ccy)}`
+                : bet.status === "tie"
+                  ? "tie"
+                  : `−${showMoney(bet.stake, ccy)}`;
           return (
-            <li key={bet.id} className="flex justify-between text-muted">
-              <span>
+            <li key={bet.id} className="flex justify-between gap-2">
+              <span className="text-muted">
                 {item.display} {bet.side === "call" ? "Higher" : "Lower"} {showMoney(bet.stake, ccy)}
               </span>
-              <span className={bet.status === "win" ? "text-buy" : bet.status === "loss" ? "text-sell" : "text-fg"}>
-                {bet.status === "open" ? `${left}s` : bet.status.toUpperCase()}
-              </span>
+              <span className={bet.status === "win" ? "text-buy" : bet.status === "loss" ? "text-sell" : "text-fg"}>{result}</span>
             </li>
           );
         })}
+        {bets.length === 0 && <li className="text-muted">No quick trades yet.</li>}
       </ul>
     </div>
   );

@@ -29,14 +29,6 @@ export function rememberBalance(userId: string, balance: number) {
   localStorage.setItem(KEY, JSON.stringify(all));
 }
 
-function applyLive(userId: string, balance: number) {
-  rememberBalance(userId, balance);
-  const state = useTradeStore.getState();
-  if (state.hydrated || state.balance !== balance) {
-    useTradeStore.setState({ balance, hydrated: true });
-  }
-}
-
 export async function adjustUserBalance(
   userId: string,
   delta: number,
@@ -79,7 +71,29 @@ export async function adjustUserBalance(
   return { balance: next, saved };
 }
 
-export function watchWallet(userId: string, onBalance: (balance: number) => void) {
+const CURSOR = "sikkaaa.wallet.cursor.v2";
+
+type Cursor = { at: string; adminBalance: number };
+
+function readCursor(userId: string): Cursor | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const all = JSON.parse(localStorage.getItem(CURSOR) || "{}") as Record<string, Cursor>;
+    const row = all[userId];
+    if (!row || typeof row.adminBalance !== "number") return null;
+    return row;
+  } catch {
+    return null;
+  }
+}
+
+function writeCursor(userId: string, cursor: Cursor) {
+  const all = JSON.parse(localStorage.getItem(CURSOR) || "{}") as Record<string, Cursor>;
+  all[userId] = cursor;
+  localStorage.setItem(CURSOR, JSON.stringify(all));
+}
+
+export function watchWallet(userId: string, onBalance?: (balance: number) => void) {
   let stop = () => undefined as void;
   let dead = false;
   const source = firebaseAuth.currentUser ? Promise.resolve(db) : readerDb();
@@ -90,20 +104,37 @@ export function watchWallet(userId: string, onBalance: (balance: number) => void
         collection(database, "withdrawals"),
         (snap) => {
           let latest = "";
-          let balance: number | null = null;
+          let adminBalance: number | null = null;
           snap.forEach((row) => {
             const data = row.data();
             if (data.userId !== userId || data.kind !== "admin-balance") return;
             const at = String(data.createdAt || "");
-            if (balance == null || at >= latest) {
+            if (adminBalance == null || at >= latest) {
               latest = at;
-              balance = Number(data.balance);
+              adminBalance = Number(data.balance);
             }
           });
-          if (balance != null && Number.isFinite(balance)) {
-            applyLive(userId, balance);
-            onBalance(balance);
+          if (adminBalance == null || !Number.isFinite(adminBalance)) return;
+          const cursor = readCursor(userId);
+          if (!cursor) {
+            const state = useTradeStore.getState();
+            const untouched =
+              state.balance === 0 &&
+              state.positions.length === 0 &&
+              state.pending.length === 0 &&
+              state.history.length === 0;
+            if (untouched) useTradeStore.setState({ balance: adminBalance, hydrated: true });
+            writeCursor(userId, { at: latest, adminBalance });
+            rememberBalance(userId, adminBalance);
+            onBalance?.(useTradeStore.getState().balance);
+            return;
           }
+          if (latest <= cursor.at && adminBalance === cursor.adminBalance) return;
+          const delta = Number((adminBalance - cursor.adminBalance).toFixed(2));
+          writeCursor(userId, { at: latest, adminBalance });
+          rememberBalance(userId, adminBalance);
+          if (delta !== 0) useTradeStore.getState().adjustCash(delta);
+          onBalance?.(useTradeStore.getState().balance);
         },
         () => undefined,
       );
