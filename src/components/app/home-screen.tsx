@@ -70,7 +70,7 @@ export function HomeScreen() {
 
       <section className="mt-5 rounded-2xl border border-border bg-bg-elevated p-5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Portfolio balance</p>
-        <p className="mt-1 font-display text-5xl tracking-tight">{formatMoney(balance)}</p>
+        <p className="mt-1 text-5xl font-medium tracking-tight">{formatMoney(balance)}</p>
         <p className={`mt-2 text-sm font-medium ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
           Today's P/L: {formatSigned(pnl)} ({formatPct(pnlPct)})
         </p>

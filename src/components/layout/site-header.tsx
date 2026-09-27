@@ -15,9 +15,13 @@ const LINKS = [
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2 text-fg">
-      <img src="./morgan-max.jpg" alt="" className="size-9 rounded-md object-cover" />
-      {!compact && <span className="font-display text-xl tracking-[0.12em]">MORGAN MAX</span>}
+    <Link to="/" className="flex items-center gap-2.5 text-fg">
+      <img src="./morgan-max.jpg" alt="" className="size-10 rounded-md object-cover" />
+      {!compact && (
+        <span className="font-display text-[13px] font-medium leading-none tracking-[0.22em]">
+          MORGAN MAX
+        </span>
+      )}
     </Link>
   );
 }

@@ -1,11 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Outfit:wght@400;500;600&display=swap");
 @import "tailwindcss";
 @source "./**/*.{ts,tsx}";
 @source "../pages/**/*.{html,ts,tsx}";
 
 @theme {
   --font-sans: "Outfit", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Instrument Serif", "Times New Roman", serif;
+  --font-display: "Cinzel", "Times New Roman", serif;
   --font-mono: "Outfit", ui-monospace, monospace;
 
   --color-bg: #0b0c0f;
@@ -63,10 +63,10 @@
   h2,
   h3 {
     text-wrap: balance;
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
+    font-weight: 500;
     letter-spacing: -0.02em;
-    font-weight: 400;
-    line-height: 1.12;
+    line-height: 1.2;
   }
 
   p {

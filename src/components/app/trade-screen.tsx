@@ -86,7 +86,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
                 select(e.target.value);
                 rememberPair(e.target.value);
               }}
-              className="mt-1 block bg-transparent font-display text-4xl outline-none"
+              className="mt-1 block bg-transparent text-3xl font-medium outline-none"
             >
               {INSTRUMENTS.map((item) => (
                 <option key={item.symbol} value={item.symbol}>
@@ -94,7 +94,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
                 </option>
               ))}
             </select>
-            <p className="num mt-1 font-display text-3xl">{formatPrice(quote.mid, inst.digits)}</p>
+            <p className="num mt-1 text-3xl font-medium">{formatPrice(quote.mid, inst.digits)}</p>
             <p className={quote.changePct >= 0 ? "text-sm text-buy" : "text-sm text-sell"}>{formatPct(quote.changePct)}</p>
           </div>
           <div className="text-right">

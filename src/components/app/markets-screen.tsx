@@ -42,7 +42,7 @@ export function MarketsScreen() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-4xl tracking-tight">Markets</h1>
+      <h1 className="text-3xl font-medium tracking-tight">Markets</h1>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
