@@ -3,7 +3,8 @@ import { market } from "@/lib/market/engine";
 import { getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
 import { positionPnl, useTradeStore } from "@/lib/trading/store";
-import { formatMoney, formatPrice, formatSigned } from "@/lib/utils";
+import { showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
+import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function PositionsScreen() {
@@ -14,6 +15,7 @@ export function PositionsScreen() {
   const closePosition = useTradeStore((s) => s.closePosition);
   const cancelPending = useTradeStore((s) => s.cancelPending);
   const [tab, setTab] = useState<"open" | "closed">("open");
+  const ccy = useDisplayCcy();
   const floating = positions.reduce((sum, pos) => {
     const q = market.getQuote(pos.symbol);
     return sum + positionPnl(pos, q.bid, q.ask);
@@ -23,7 +25,7 @@ export function PositionsScreen() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <h1 className="text-3xl font-medium">Positions</h1>
       <p className={`mt-2 text-sm ${floating >= 0 ? "text-buy" : "text-sell"}`}>
-        Open P/L {formatSigned(floating)}
+        Open P/L {showSigned(floating, ccy)}
       </p>
       <div className="mt-4 grid grid-cols-2 rounded-2xl bg-bg-subtle p-1 text-sm">
         <button type="button" onClick={() => setTab("open")} className={`h-10 rounded-xl ${tab === "open" ? "bg-bg-elevated text-fg gold-ring" : "text-muted"}`}>
@@ -50,7 +52,7 @@ export function PositionsScreen() {
                     {pos.side} · {pos.lots.toFixed(2)} lot · {pos.style === "intraday" ? "Intraday" : "Carry"} · {pos.leverage || inst.leverage}x
                   </p>
                 </div>
-                <p className={pnl >= 0 ? "text-buy" : "text-sell"}>{formatSigned(pnl)}</p>
+                <p className={pnl >= 0 ? "text-buy" : "text-sell"}>{showSigned(pnl, ccy)}</p>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted">
                 <div>Entry {formatPrice(pos.entry, inst.digits)}</div>
@@ -102,7 +104,7 @@ export function PositionsScreen() {
               <span>
                 {inst.display} {row.side.toUpperCase()}
               </span>
-              <span className={row.pnl >= 0 ? "text-buy" : "text-sell"}>{formatSigned(row.pnl)}</span>
+              <span className={row.pnl >= 0 ? "text-buy" : "text-sell"}>{showSigned(row.pnl, ccy)}</span>
             </li>
           );
         })}

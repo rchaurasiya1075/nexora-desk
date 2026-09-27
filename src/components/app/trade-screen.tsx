@@ -7,7 +7,8 @@ import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
 import { positionPnl, requiredMargin, useTradeStore, type HoldStyle, type OrderKind, type Side } from "@/lib/trading/store";
-import { formatMoney, formatPct, formatPrice, formatSigned } from "@/lib/utils";
+import { formatPct, formatPrice } from "@/lib/utils";
+import { inrPerUsd, showMoney, showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
 
 const LEVS = [1, 10, 50, 100];
 
@@ -30,6 +31,8 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
   const [trigger, setTrigger] = useState("");
   const [sl, setSl] = useState("");
   const [tp, setTp] = useState("");
+  const ccy = useDisplayCcy();
+  const rate = inrPerUsd();
 
   const opened = useRef("");
 
@@ -51,7 +54,8 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
 
   const inst = getInstrument(selected);
   const quote = market.getQuote(selected);
-  const usd = Number(amount);
+  const typed = Number(amount);
+  const usd = ccy === "INR" ? (Number.isFinite(typed) ? typed / rate : 0) : typed;
   const lots = useMemo(
     () => lotsFor(inst, Number.isFinite(usd) ? usd : 0, quote.ask, lev),
     [inst, usd, quote.ask, lev],
@@ -144,7 +148,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
         </div>
         <div className="text-right">
           <p className="text-[10px] uppercase tracking-wide text-subtle">Balance</p>
-          <p className="num text-base">{formatMoney(balance)}</p>
+          <p className="num text-base">{showMoney(balance, ccy)}</p>
           <button type="button" onClick={() => setFull((v) => !v)} className="mt-1 text-xs text-muted underline">
             {full ? "Exit" : "Full chart"}
           </button>
@@ -208,11 +212,11 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
           />
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String(Math.max(10, (Number(amount) || 0) - 50)))}>
+          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String(Math.max(ccy === "INR" ? 500 : 10, (Number(amount) || 0) - (ccy === "INR" ? 1000 : 50))))}>
             −
           </button>
           <div className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-full bg-white/10 px-3">
-            <span className="text-muted">$</span>
+            <span className="text-muted">{ccy === "INR" ? "₹" : "$"}</span>
             <input
               inputMode="decimal"
               value={amount}
@@ -220,7 +224,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
               className="w-24 bg-transparent text-center text-base font-medium outline-none"
             />
           </div>
-          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String((Number(amount) || 0) + 50))}>
+          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String((Number(amount) || 0) + (ccy === "INR" ? 1000 : 50)))}>
             +
           </button>
         </div>
@@ -234,7 +238,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
         </div>
         {mine.length > 0 && (
           <div className="mt-2 flex items-center justify-between text-xs">
-            <span className={floating >= 0 ? "text-buy" : "text-sell"}>Open P/L {formatSigned(floating)}</span>
+            <span className={floating >= 0 ? "text-buy" : "text-sell"}>Open P/L {showSigned(floating, ccy)}</span>
             <Link to="/trade" search={{ view: "positions" }} className="text-muted underline">
               Positions
             </Link>
@@ -253,8 +257,8 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
               <Row k="Style" v={hold === "intraday" ? "Intraday" : "Carry forward"} />
               <Row k="Leverage" v={`${lev}x`} />
               <Row k="Price" v={kind === "market" ? formatPrice(pending === "buy" ? quote.ask : quote.bid, inst.digits) : trigger || "—"} />
-              <Row k="Amount" v={formatMoney(usd)} />
-              <Row k="Margin" v={formatMoney(margin)} />
+              <Row k="Amount" v={showMoney(usd, ccy)} />
+              <Row k="Margin" v={showMoney(margin, ccy)} />
               <Row k="Stop loss" v={sl || "—"} />
               <Row k="Take profit" v={tp || "—"} />
             </dl>
@@ -280,7 +284,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
             <p className="text-sm text-buy">Order placed</p>
             <h2 className="mt-2 font-display text-3xl">{placed.side.toUpperCase()} ORDER PLACED</h2>
             <p className="mt-3 text-sm text-muted">
-              {inst.display} · {placed.side.toUpperCase()} {formatMoney(placed.amount)}
+              {inst.display} · {placed.side.toUpperCase()} {showMoney(usd, ccy)}
             </p>
             <p className="num mt-1">Entry {formatPrice(placed.price, inst.digits)}</p>
             <button

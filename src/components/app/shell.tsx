@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { market } from "@/lib/market/engine";
 import { useTradeStore } from "@/lib/trading/store";
 import { Logo } from "@/components/layout/site-header";
+import { CurrencyToggle } from "@/lib/money/display-ccy";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -65,8 +66,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {pathname !== "/" && (
-        <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border bg-bg/90 px-4 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 backdrop-blur md:hidden">
           <Logo />
+          <CurrencyToggle />
         </header>
       )}
 

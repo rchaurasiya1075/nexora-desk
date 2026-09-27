@@ -8,9 +8,10 @@ import { useDeskSession } from "@/lib/firebase/session";
 import { ARTICLES } from "@/lib/news";
 import { positionPnl, useTradeStore } from "@/lib/trading/store";
 import { Logo } from "@/components/layout/site-header";
-import { formatMoney, formatPct, formatPrice, formatSigned } from "@/lib/utils";
+import { CurrencyToggle, showMoney, showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
+import { formatPct, formatPrice } from "@/lib/utils";
 
-const HOME = ["EURUSD", "GBPUSD", "XAUUSD", "USDJPY", "BTCUSD", "USDCHF"];
+const HOME = ["EURUSD", "GBPUSD", "XAUUSD", "USDINR", "EURINR", "BTCUSD"];
 
 export function HomeScreen() {
   useMarketTick();
@@ -18,7 +19,8 @@ export function HomeScreen() {
   const balance = useTradeStore((s) => s.balance);
   const positions = useTradeStore((s) => s.positions);
   const history = useTradeStore((s) => s.history);
-  const [filter, setFilter] = useState<"all" | "forex" | "gold" | "gainers">("all");
+  const [filter, setFilter] = useState<"all" | "forex" | "gold" | "gainers" | "inr">("all");
+  const ccy = useDisplayCcy();
   const [story, setStory] = useState<"news" | "movers" | "gold" | null>(null);
   const floating = positions.reduce((sum, pos) => {
     const q = market.getQuote(pos.symbol);
@@ -38,6 +40,7 @@ export function HomeScreen() {
     const pool = HOME.map((symbol) => getInstrument(symbol));
     if (filter === "forex") return pool.filter((inst) => inst.assetClass === "forex");
     if (filter === "gold") return pool.filter((inst) => inst.assetClass === "metals");
+    if (filter === "inr") return INSTRUMENTS.filter((inst) => inst.symbol.endsWith("INR"));
     if (filter === "gainers") {
       return [...INSTRUMENTS]
         .filter((inst) => market.getQuote(inst.symbol).changePct > 0)
@@ -56,6 +59,7 @@ export function HomeScreen() {
       <header className="flex items-center justify-between">
         <Logo />
         <div className="flex items-center gap-2">
+          <CurrencyToggle />
           <Link to="/markets" className="flex size-10 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
             <Search className="size-4" />
           </Link>
@@ -70,9 +74,9 @@ export function HomeScreen() {
 
       <section className="mt-5 rounded-2xl border border-border bg-bg-elevated p-5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Portfolio balance</p>
-        <p className="mt-1 text-5xl font-medium tracking-tight">{formatMoney(balance)}</p>
+        <p className="mt-1 text-5xl font-medium tracking-tight">{showMoney(balance, ccy)}</p>
         <p className={`mt-2 text-sm font-medium ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
-          Today's P/L: {formatSigned(pnl)} ({formatPct(pnlPct)})
+          Today's P/L: {showSigned(pnl, ccy)} ({formatPct(pnlPct)})
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Link to="/trade" className="flex h-12 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-accent-fg active:scale-[0.98]">
@@ -100,6 +104,7 @@ export function HomeScreen() {
             ["all", "All"],
             ["forex", "Forex"],
             ["gold", "Gold"],
+            ["inr", "INR"],
             ["gainers", "Gainers"],
           ] as const
         ).map(([id, label]) => (
