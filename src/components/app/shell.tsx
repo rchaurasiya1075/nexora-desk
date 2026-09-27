@@ -2,6 +2,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Briefcase, Home, LineChart, User, ArrowLeftRight } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { market } from "@/lib/market/engine";
+import { settleOptions } from "@/lib/trading/options-book";
+import { settleQuick } from "@/lib/trading/quick";
 import { useTradeStore } from "@/lib/trading/store";
 import { Logo } from "@/components/layout/site-header";
 import { CurrencyToggle } from "@/lib/money/display-ccy";
@@ -25,6 +27,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     market.start();
     void useTradeStore.getState().hydrateFromServer();
+    const timer = setInterval(() => {
+      settleQuick();
+      settleOptions();
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
   function active(key: string) {

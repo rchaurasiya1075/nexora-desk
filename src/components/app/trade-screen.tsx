@@ -126,7 +126,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
   }
 
   return (
-    <div className="-mb-28 flex h-[calc(100dvh-8.6rem)] flex-col px-3 pt-2 md:mb-0 md:h-[calc(100dvh-1.5rem)] md:px-4">
+    <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-2 md:mb-0 md:h-[calc(100dvh-4rem)] md:px-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <select

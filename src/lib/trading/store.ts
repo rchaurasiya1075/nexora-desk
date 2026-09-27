@@ -101,6 +101,7 @@ type TradeState = BookSlice & {
   applyBook: (book: BookSlice) => void;
   hydrateFromServer: () => Promise<void>;
   persistNow: () => void;
+  adjustCash: (delta: number) => number;
   loadPrefs: () => void;
   select: (symbol: string) => void;
   setPricing: (mode: AccountPricing) => void;
@@ -269,6 +270,12 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     }
   },
   persistNow: () => scheduleSave(),
+  adjustCash: (delta) => {
+    const next = Math.max(0, Number((get().balance + delta).toFixed(2)));
+    set({ balance: next });
+    scheduleSave();
+    return next;
+  },
   loadPrefs: () => {
     set({
       oneClick: readPref("nx-1click", false),
