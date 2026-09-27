@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
-import { TradingViewChart } from "@/components/trade/tv-chart";
+import { QuickLiveChart } from "@/components/trade/quick-live-chart";
 import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
@@ -101,12 +101,7 @@ export function QuickScreen() {
         </p>
       )}
       <div className="relative mt-2 min-h-[240px] flex-1 overflow-hidden rounded-xl border border-white/10">
-        <TradingViewChart symbol={focus} interval="1" />
-        <div className="pointer-events-none absolute left-2 top-2 flex items-center gap-2 rounded-full bg-black/70 px-2 py-1 text-[10px] uppercase tracking-wide">
-          <span className="size-1.5 rounded-full bg-[#7dcea0]" />
-          Live · {inst.display}
-          {live && <span>Entry {formatPrice(live.entry, inst.digits)}</span>}
-        </div>
+        <QuickLiveChart symbol={focus} entry={live?.entry} />
       </div>
       <div className="mt-2 flex gap-1.5">
         {TIMES.map((item) => (
