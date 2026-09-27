@@ -96,6 +96,7 @@ type BookSlice = {
 
 type TradeState = BookSlice & {
   hydrated: boolean;
+  cashLock: boolean;
   lastToast: string | null;
   setHydrated: () => void;
   applyBook: (book: BookSlice) => void;
@@ -236,6 +237,7 @@ function blocked(state: TradeState): string | null {
 
 export const useTradeStore = create<TradeState>()((set, get) => ({
   hydrated: false,
+  cashLock: false,
   balance: STARTING_BALANCE,
   status: "active",
   pricing: "standard",
@@ -250,8 +252,9 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
   setHydrated: () => set({ hydrated: true }),
   applyBook: (book) => {
     market.setPricing(book.pricing);
+    const keepCash = get().cashLock;
     set({
-      balance: book.balance,
+      balance: keepCash ? get().balance : book.balance,
       status: book.status,
       pricing: book.pricing,
       selected: book.selected || get().selected,
@@ -272,7 +275,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
   persistNow: () => scheduleSave(),
   adjustCash: (delta) => {
     const next = Math.max(0, Number((get().balance + delta).toFixed(2)));
-    set({ balance: next });
+    set({ balance: next, cashLock: true });
     scheduleSave();
     return next;
   },

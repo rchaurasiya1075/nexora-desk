@@ -3,15 +3,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { listAllDeposits, reviewDeposit } from "@/lib/ops/api";
+import { listAllDeposits } from "@/lib/ops/api";
+import { applyReviews, readReviews, settleDeposit, subscribeReviews, watchDepositReviews } from "@/lib/ops/deposit-review";
 import { watchDeposits } from "@/lib/firebase/desk";
-import type { DepositRequest } from "@/lib/ops/types";
+import type { DepositRequest, DepositStatus } from "@/lib/ops/types";
 import { formatAmount } from "@/lib/ops/money";
 import { formatMoney } from "@/lib/utils";
 
 export function AdminDeposits({ onChange }: { onChange: () => void }) {
   const [rows, setRows] = useState<DepositRequest[]>([]);
   const [remote, setRemote] = useState<DepositRequest[]>([]);
+  const [reviews, setReviews] = useState<Record<string, DepositStatus>>({});
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [busy, setBusy] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
@@ -43,10 +45,19 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
     );
   }, []);
 
+  useEffect(() => {
+    const stopRemote = watchDepositReviews((rows) => setReviews((prev) => ({ ...prev, ...rows })));
+    const stopLocal = subscribeReviews(() => setReviews((prev) => ({ ...prev, ...readReviews() })));
+    return () => {
+      stopRemote();
+      stopLocal();
+    };
+  }, []);
+
   const merged = new Map<string, DepositRequest>();
   for (const row of rows) merged.set(row.docId || String(row.id), row);
   for (const row of remote) merged.set(row.docId || String(row.id), row);
-  const visible = [...merged.values()]
+  const visible = applyReviews([...merged.values()], reviews)
     .filter((row) => filter === "all" || row.status === filter)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
@@ -54,14 +65,13 @@ export function AdminDeposits({ onChange }: { onChange: () => void }) {
     setBusy(row.id);
     try {
       const override = usd[row.id];
-      await reviewDeposit({
-        data: {
-          id: row.id,
-          docId: row.docId,
-          action,
-          usdCredit: override ? Number(override) : undefined,
-          adminNote: notes[row.id],
-        },
+      await settleDeposit({
+        id: row.id,
+        docId: row.docId,
+        userId: row.userId,
+        action,
+        usdCredit: override ? Number(override) : row.usdCredit,
+        note: notes[row.id],
       });
       toast.success(action === "approve" ? "Credited to user wallet." : "Rejected.");
       await load();

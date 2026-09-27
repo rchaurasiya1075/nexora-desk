@@ -7,6 +7,7 @@ import type { DepositRequest } from "@/lib/ops/types";
 import { builtinCurrencies, builtinMethods } from "@/lib/ops/rails";
 import { toUsd } from "@/lib/ops/money";
 import { adjustUserBalance, balanceOverride } from "@/lib/ops/balance-adjust";
+import { applyReviews, loadReviews } from "@/lib/ops/deposit-review";
 import { fetchDirectory, profileFromDesk, publishProfiles, toDeskUser } from "@/lib/ops/directory";
 import * as firebaseApi from "@/lib/firebase/desk";
 import * as localApi from "@/lib/ops/local-api";
@@ -50,7 +51,8 @@ export async function listMyDeposits() {
       /* rules can block the list; the local request still shows */
     }
   }
-  return [...rows.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const reviews = await loadReviews(firebaseAuth.currentUser?.uid);
+  return applyReviews([...rows.values()], reviews).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 export async function createDepositRequest(
   input: Parameters<typeof localApi.createDepositRequest>[0],

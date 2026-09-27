@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/firebase/gates";
 import { watchDeposits } from "@/lib/firebase/desk";
 import { balanceOverride, rememberBalance } from "@/lib/ops/balance-adjust";
+import { applyReviews, readReviews, settleDeposit, subscribeReviews, watchDepositReviews } from "@/lib/ops/deposit-review";
+import type { DepositStatus } from "@/lib/ops/types";
 import { useDeskSession } from "@/lib/firebase/session";
 import { INSTRUMENTS } from "@/lib/market/instruments";
 import { market } from "@/lib/market/engine";
@@ -16,7 +18,6 @@ import {
   adminCredit,
   listAllDeposits,
   listDeskUsers,
-  reviewDeposit,
   setUserAdmin,
   setUserFrozen,
 } from "@/lib/ops/api";
@@ -84,6 +85,7 @@ export function AdminConsole() {
   const [users, setUsers] = useState<DeskUser[]>([]);
   const [userNote, setUserNote] = useState<string | null>(null);
   const [deposits, setDeposits] = useState<DepositRequest[]>([]);
+  const [reviews, setReviews] = useState<Record<string, DepositStatus>>({});
   const [depositNote, setDepositNote] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
@@ -93,11 +95,7 @@ export function AdminConsole() {
   useEffect(() => {
     return watchDeposits(
       (rows) => {
-        setDeposits((prev) => {
-          const map = new Map(prev.map((row) => [row.docId || String(row.id), row]));
-          for (const row of rows) map.set(row.docId || String(row.id), row);
-          return [...map.values()];
-        });
+        setDeposits(rows);
         setDepositNote(null);
       },
       () =>
@@ -106,6 +104,17 @@ export function AdminConsole() {
         ),
     );
   }, []);
+
+  useEffect(() => {
+    const stopRemote = watchDepositReviews((rows) => setReviews((prev) => ({ ...prev, ...rows })));
+    const stopLocal = subscribeReviews(() => setReviews((prev) => ({ ...prev, ...readReviews() })));
+    return () => {
+      stopRemote();
+      stopLocal();
+    };
+  }, []);
+
+  const reviewedDeposits = useMemo(() => applyReviews(deposits, reviews), [deposits, reviews]);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -174,7 +183,7 @@ export function AdminConsole() {
   const ledger = listAllLedger();
   const active = users.filter((u) => u.status === "active").length;
   const suspended = users.filter((u) => u.status !== "active").length;
-  const pending = deposits.filter((d) => d.status === "pending");
+  const pending = reviewedDeposits.filter((d) => d.status === "pending");
   const pendingWd = control.withdrawals.filter((w) => w.status === "pending");
   const aum = users.reduce((s, u) => s + u.balance, 0);
   const today = new Date().toISOString().slice(0, 10);
@@ -255,7 +264,7 @@ export function AdminConsole() {
           )}
           {section === "deposits" && (
             <DepositsPane
-              deposits={deposits}
+              deposits={reviewedDeposits}
               withdrawals={control.withdrawals}
               rate={control.settings.inrPerUsd}
               adminName={adminName}
@@ -497,23 +506,20 @@ function DepositsPane({
                     type="button"
                     onClick={() => {
                       const credit = d.usdCredit || 0;
-                      void adminCredit({
-                        data: {
-                          userId: d.userId,
-                          amount: credit,
-                          note: `Deposit ${d.reference || d.docId || d.id}`,
-                          currentBalance: balanceOverride(d.userId) ?? 0,
-                        },
+                      void settleDeposit({
+                        id: d.id,
+                        docId: d.docId,
+                        userId: d.userId,
+                        action: "approve",
+                        usdCredit: credit,
+                        note: `Deposit ${d.reference || d.docId || d.id}`,
                       })
-                        .then((res) => {
-                          audit(adminName, "DEPOSIT_APPROVE", d.userId, `$${res.balance}`);
-                          toast.success(`Wallet ${formatMoney(res.balance)}`);
+                        .then(() => {
+                          audit(adminName, "DEPOSIT_APPROVE", d.userId, `$${credit}`);
+                          toast.success(`Added ${formatMoney(credit)} to the user.`);
                           onDone();
                         })
                         .catch((err) => toast.error(err instanceof Error ? err.message : "Failed"));
-                      void reviewDeposit({
-                        data: { id: d.id, docId: d.docId, action: "approve", usdCredit: credit },
-                      }).catch(() => undefined);
                     }}
                   >
                     Approve
@@ -522,7 +528,12 @@ function DepositsPane({
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      void reviewDeposit({ data: { id: d.id, docId: d.docId, action: "reject" } })
+                      void settleDeposit({
+                        id: d.id,
+                        docId: d.docId,
+                        userId: d.userId,
+                        action: "reject",
+                      })
                         .then(() => {
                           audit(adminName, "DEPOSIT_REJECT", String(d.id), d.userEmail ?? "");
                           onDone();

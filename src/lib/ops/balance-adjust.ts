@@ -93,6 +93,25 @@ function writeCursor(userId: string, cursor: Cursor) {
   localStorage.setItem(CURSOR, JSON.stringify(all));
 }
 
+const SEEN = "sikkaaa.wallet.seen.v3";
+
+function readSeen(userId: string): Record<string, true> | null {
+  if (typeof window === "undefined") return {};
+  try {
+    const all = JSON.parse(localStorage.getItem(SEEN) || "{}") as Record<string, Record<string, true> | null>;
+    if (!(userId in all)) return null;
+    return all[userId] || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSeen(userId: string, ids: Record<string, true>) {
+  const all = JSON.parse(localStorage.getItem(SEEN) || "{}") as Record<string, Record<string, true>>;
+  all[userId] = ids;
+  localStorage.setItem(SEEN, JSON.stringify(all));
+}
+
 export function watchWallet(userId: string, onBalance?: (balance: number) => void) {
   let stop = () => undefined as void;
   let dead = false;
@@ -103,37 +122,59 @@ export function watchWallet(userId: string, onBalance?: (balance: number) => voi
       stop = onSnapshot(
         collection(database, "withdrawals"),
         (snap) => {
-          let latest = "";
-          let adminBalance: number | null = null;
+          const docs: { id: string; at: string; balance: number; delta: number }[] = [];
           snap.forEach((row) => {
             const data = row.data();
             if (data.userId !== userId || data.kind !== "admin-balance") return;
-            const at = String(data.createdAt || "");
-            if (adminBalance == null || at >= latest) {
-              latest = at;
-              adminBalance = Number(data.balance);
-            }
+            docs.push({
+              id: row.id,
+              at: String(data.createdAt || ""),
+              balance: Number(data.balance),
+              delta: Number(data.delta),
+            });
           });
-          if (adminBalance == null || !Number.isFinite(adminBalance)) return;
-          const cursor = readCursor(userId);
-          if (!cursor) {
+          if (!docs.length) return;
+          docs.sort((a, b) => a.at.localeCompare(b.at));
+          let seen = readSeen(userId);
+          if (!seen) {
+            seen = {};
+            const freshAfter = Date.now() - 20_000;
             const state = useTradeStore.getState();
-            const untouched =
-              state.balance === 0 &&
-              state.positions.length === 0 &&
-              state.pending.length === 0 &&
-              state.history.length === 0;
-            if (untouched) useTradeStore.setState({ balance: adminBalance, hydrated: true });
-            writeCursor(userId, { at: latest, adminBalance });
-            rememberBalance(userId, adminBalance);
+            let applied = false;
+            for (const row of docs) {
+              const at = Date.parse(row.at);
+              if (!seen[row.id] && Number.isFinite(at) && at >= freshAfter && Number.isFinite(row.delta) && row.delta !== 0) {
+                useTradeStore.getState().adjustCash(row.delta);
+                useTradeStore.setState({ cashLock: true });
+                applied = true;
+              }
+              seen[row.id] = true;
+            }
+            writeSeen(userId, seen);
+            const latest = docs[docs.length - 1];
+            if (!applied && state.balance === 0 && state.positions.length === 0 && latest && Number.isFinite(latest.balance) && latest.balance > 0) {
+              useTradeStore.setState({ balance: latest.balance, hydrated: true, cashLock: true });
+              rememberBalance(userId, latest.balance);
+            }
             onBalance?.(useTradeStore.getState().balance);
             return;
           }
-          if (latest <= cursor.at && adminBalance === cursor.adminBalance) return;
-          const delta = Number((adminBalance - cursor.adminBalance).toFixed(2));
-          writeCursor(userId, { at: latest, adminBalance });
-          rememberBalance(userId, adminBalance);
-          if (delta !== 0) useTradeStore.getState().adjustCash(delta);
+          let changed = false;
+          for (const row of docs) {
+            if (seen[row.id] || !Number.isFinite(row.delta) || row.delta === 0) {
+              seen[row.id] = true;
+              continue;
+            }
+            seen[row.id] = true;
+            useTradeStore.getState().adjustCash(row.delta);
+            useTradeStore.setState({ cashLock: true });
+            changed = true;
+          }
+          writeSeen(userId, seen);
+          if (changed) {
+            const latest = docs[docs.length - 1];
+            if (latest && Number.isFinite(latest.balance)) rememberBalance(userId, latest.balance);
+          }
           onBalance?.(useTradeStore.getState().balance);
         },
         () => undefined,
