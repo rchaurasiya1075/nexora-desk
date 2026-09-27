@@ -8,21 +8,21 @@
   --font-display: "Inter", "SF Pro Display", system-ui, sans-serif;
   --font-mono: "Inter", ui-monospace, "SF Mono", Menlo, monospace;
 
-  --color-bg: #0f1115;
-  --color-bg-elevated: #171a21;
-  --color-bg-subtle: #1e222b;
-  --color-fg: #f4f1ea;
-  --color-muted: #a3a09a;
-  --color-subtle: #6f6d68;
-  --color-border: color-mix(in oklab, #c6a15b 18%, transparent);
-  --color-border-strong: color-mix(in oklab, #c6a15b 36%, transparent);
-  --color-accent: #c6a15b;
-  --color-accent-fg: #14120c;
-  --color-buy: #00e676;
-  --color-buy-fg: #04210f;
-  --color-sell: #ff5252;
-  --color-sell-fg: #2a0707;
-  --color-ring: #3ddcff;
+  --color-bg: #0b0c0f;
+  --color-bg-elevated: #14161c;
+  --color-bg-subtle: #1c1f27;
+  --color-fg: #f4f5f7;
+  --color-muted: #9aa0ab;
+  --color-subtle: #6d7380;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+  --color-accent: #f4f5f7;
+  --color-accent-fg: #111214;
+  --color-buy: #7dbea6;
+  --color-buy-fg: #071610;
+  --color-sell: #d7a3a6;
+  --color-sell-fg: #1c1213;
+  --color-ring: #f4f5f7;
   --color-desk: #0b1118;
   --color-desk-fg: #f2f1ed;
   --color-desk-muted: color-mix(in oklab, var(--color-desk-fg) 48%, transparent);
@@ -142,7 +142,7 @@ html.theme-light {
 }
 
 .gold-ring {
-  box-shadow: 0 0 0 1px color-mix(in oklab, #c6a15b 55%, transparent);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {

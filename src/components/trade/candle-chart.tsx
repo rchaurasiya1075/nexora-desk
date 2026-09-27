@@ -250,7 +250,7 @@ export function CandleChart({
           <button
             type="button"
             onClick={() => onTrade?.("sell")}
-            className="flex h-8 min-w-20 flex-col items-center justify-center rounded-sm bg-sell px-2 text-sell-fg"
+            className="flex h-8 min-w-20 flex-col items-center justify-center rounded-md border border-white/15 bg-transparent px-2 text-fg"
           >
             <span className="text-[9px] leading-none opacity-80">Sell</span>
             <span className="num text-[12px] font-medium leading-tight">
@@ -260,7 +260,7 @@ export function CandleChart({
           <button
             type="button"
             onClick={() => onTrade?.("buy")}
-            className="flex h-8 min-w-20 flex-col items-center justify-center rounded-sm bg-buy px-2 text-buy-fg"
+            className="flex h-8 min-w-20 flex-col items-center justify-center rounded-md bg-white px-2 text-[#111214]"
           >
             <span className="text-[9px] leading-none opacity-80">Buy</span>
             <span className="num text-[12px] font-medium leading-tight">

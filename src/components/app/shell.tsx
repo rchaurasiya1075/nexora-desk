@@ -51,13 +51,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 search={item.search}
                 className={cn(
                   "flex h-11 items-center gap-3 rounded-lg px-3 text-sm",
-                  on ? "bg-bg-subtle text-accent gold-ring" : "text-muted hover:text-fg",
+                  on ? "bg-white/10 text-fg" : "text-muted hover:text-fg",
                 )}
               >
                 <Icon className="size-4" />
                 {item.label}
                 {item.key === "positions" && openCount > 0 && (
-                  <span className="ml-auto rounded-full bg-buy px-1.5 text-[11px] text-buy-fg">{openCount}</span>
+                  <span className="ml-auto rounded-full bg-white/10 px-1.5 text-[11px] text-fg">{openCount}</span>
                 )}
               </Link>
             );
@@ -77,8 +77,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 backdrop-blur md:hidden">
-        <ul className="grid grid-cols-5">
+      <nav className="fixed inset-x-3 bottom-3 z-30 md:hidden">
+        <ul className="grid grid-cols-5 rounded-2xl border border-white/10 bg-[#12141a]/92 px-1 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           {NAV.map((item) => {
             const Icon = item.icon;
             const on = active(item.key);
@@ -88,19 +88,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   to={item.to}
                   search={item.search}
                   className={cn(
-                    "flex h-16 flex-col items-center justify-center gap-1 text-[10px]",
-                    on ? "text-fg" : "text-muted",
+                    "flex h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] tracking-wide",
+                    on ? "bg-white text-[#111214]" : "text-[#8b919c]",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex items-center justify-center",
-                      item.center && "size-12 -mt-6 rounded-full bg-accent text-accent-fg shadow-[0_8px_24px_rgba(198,161,91,0.35)]",
-                      item.center && on && "ring-2 ring-buy",
-                    )}
-                  >
-                    <Icon className={item.center ? "size-5" : "size-5"} />
-                  </span>
+                  <Icon className="size-4" />
                   {item.label}
                 </Link>
               </li>

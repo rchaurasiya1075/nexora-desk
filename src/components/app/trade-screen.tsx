@@ -157,11 +157,11 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
           About {formatMoney(margin)} margin · {lots.toFixed(2)} lots
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => ask("buy")} className="h-[4.5rem] rounded-2xl bg-buy text-buy-fg transition-transform active:scale-[0.98]">
+          <button type="button" onClick={() => ask("buy")} className="h-[4.5rem] rounded-2xl bg-white text-[#111214] transition-transform active:scale-[0.98]">
             <span className="block text-xs font-medium tracking-wide">BUY</span>
             <span className="num text-lg font-semibold">{formatPrice(quote.ask, inst.digits)}</span>
           </button>
-          <button type="button" onClick={() => ask("sell")} className="h-[4.5rem] rounded-2xl bg-sell text-sell-fg transition-transform active:scale-[0.98]">
+          <button type="button" onClick={() => ask("sell")} className="h-[4.5rem] rounded-2xl border border-white/15 bg-white/5 text-fg transition-transform active:scale-[0.98]">
             <span className="block text-xs font-medium tracking-wide">SELL</span>
             <span className="num text-lg font-semibold">{formatPrice(quote.bid, inst.digits)}</span>
           </button>
@@ -218,7 +218,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
               </button>
               <button
                 type="button"
-                className={`h-12 rounded-xl font-semibold ${pending === "buy" ? "bg-buy text-buy-fg" : "bg-sell text-sell-fg"}`}
+                className="h-12 rounded-xl bg-white font-semibold text-[#111214]"
                 onClick={confirm}
               >
                 Confirm {pending.toUpperCase()}
