@@ -19,7 +19,7 @@ export function PositionsScreen() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="font-display text-3xl">Positions</h1>
+      <h1 className="font-display text-4xl">Positions</h1>
       <p className={`mt-2 text-sm ${floating >= 0 ? "text-buy" : "text-sell"}`}>
         Open P/L {formatSigned(floating)}
       </p>

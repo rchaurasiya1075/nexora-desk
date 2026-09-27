@@ -53,7 +53,7 @@ export function HomeScreen() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
       <header className="flex items-center justify-between">
-        <span className="text-sm font-bold uppercase tracking-[0.16em]">SIKKAAA</span>
+        <span className="font-display text-[1.7rem] tracking-[0.16em]">SIKKAAA</span>
         <div className="flex items-center gap-2">
           <Link to="/markets" className="flex size-10 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
             <Search className="size-4" />
@@ -69,7 +69,7 @@ export function HomeScreen() {
 
       <section className="mt-5 rounded-2xl border border-border bg-bg-elevated p-5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Portfolio balance</p>
-        <p className="mt-2 text-4xl font-semibold tracking-tight">{formatMoney(balance)}</p>
+        <p className="mt-1 font-display text-5xl tracking-tight">{formatMoney(balance)}</p>
         <p className={`mt-2 text-sm font-medium ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
           Today's P/L: {formatSigned(pnl)} ({formatPct(pnlPct)})
         </p>

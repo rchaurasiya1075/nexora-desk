@@ -21,7 +21,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
         <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-buy" />
       </span>
       {!compact && (
-        <span className="text-[1.15rem] font-bold uppercase tracking-[0.12em]">SIKKAAA</span>
+        <span className="font-display text-[1.65rem] tracking-[0.14em]">SIKKAAA</span>
       )}
     </Link>
   );
