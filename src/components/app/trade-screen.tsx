@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CandleChart } from "@/components/trade/candle-chart";
 import { rememberPair } from "@/components/app/markets-screen";
@@ -12,7 +12,7 @@ import { formatMoney, formatPct, formatPrice, formatSigned } from "@/lib/utils";
 const QUICK = [50, 100, 250, 500, 1000];
 const CHIPS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"];
 
-export function TradeScreen({ symbol }: { symbol?: string }) {
+export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: Side }) {
   useMarketTick();
   const navigate = useNavigate();
   const selected = useTradeStore((s) => s.selected);
@@ -25,6 +25,8 @@ export function TradeScreen({ symbol }: { symbol?: string }) {
   const [pending, setPending] = useState<Side | null>(null);
   const [placed, setPlaced] = useState<{ side: Side; price: number; amount: number } | null>(null);
 
+  const opened = useRef("");
+
   useEffect(() => {
     if (!symbol) return;
     const known = INSTRUMENTS.some((inst) => inst.symbol === symbol);
@@ -32,6 +34,14 @@ export function TradeScreen({ symbol }: { symbol?: string }) {
     select(symbol);
     rememberPair(symbol);
   }, [symbol, select]);
+
+  useEffect(() => {
+    if (!intent) return;
+    const key = `${symbol ?? ""}:${intent}`;
+    if (opened.current === key) return;
+    opened.current = key;
+    setPending(intent);
+  }, [intent, symbol]);
 
   const inst = getInstrument(selected);
   const quote = market.getQuote(selected);

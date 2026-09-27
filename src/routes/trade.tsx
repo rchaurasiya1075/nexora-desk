@@ -7,13 +7,14 @@ import { Logo } from "@/components/layout/site-header";
 import { SignInGate } from "@/lib/firebase/gates";
 import { useDeskSession } from "@/lib/firebase/session";
 
-type TradeSearch = { view?: "positions"; symbol?: string };
+type TradeSearch = { view?: "positions"; symbol?: string; side?: "buy" | "sell" };
 
 export const Route = createFileRoute("/trade")({
   validateSearch: (search: Record<string, unknown>): TradeSearch => {
     const out: TradeSearch = {};
     if (search.view === "positions") out.view = "positions";
     if (typeof search.symbol === "string") out.symbol = search.symbol.toUpperCase();
+    if (search.side === "buy" || search.side === "sell") out.side = search.side;
     return out;
   },
   component: TradePage,
@@ -21,11 +22,11 @@ export const Route = createFileRoute("/trade")({
 
 export function TradePage() {
   const { isPending } = useDeskSession();
-  const { view, symbol } = Route.useSearch();
+  const { view, symbol, side } = Route.useSearch();
   if (isPending) return <div className="min-h-dvh bg-bg" />;
   return (
     <SignInGate fallback={<TradeLocked />}>
-      <AppShell>{view === "positions" ? <PositionsScreen /> : <TradeScreen symbol={symbol} />}</AppShell>
+      <AppShell>{view === "positions" ? <PositionsScreen /> : <TradeScreen symbol={symbol} side={side} />}</AppShell>
     </SignInGate>
   );
 }
@@ -36,7 +37,7 @@ function TradeLocked() {
       <Logo />
       <h1 className="mt-8 max-w-md text-center font-display text-4xl">Sign in, then buy or sell</h1>
       <p className="mt-3 max-w-md text-center text-sm text-muted">
-        Paper trading only. After sign-in, Trade is the middle button. Pick a pair, enter an amount, then BUY or SELL.
+        After sign-in, Trade is the middle button. Pick a pair, enter an amount, then BUY or SELL.
       </p>
       <div className="mt-8">
         <LoginForm callbackURL="/trade" />

@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link to="/" className="px-3 text-[1.15rem] font-bold uppercase tracking-[0.14em]">
           SIKKAAA
         </Link>
-        <p className="mt-1 px-3 text-[11px] uppercase tracking-[0.16em] text-subtle">Paper trading</p>
+        <p className="mt-1 px-3 text-[11px] tracking-[0.08em] text-subtle">Trade smarter</p>
         <nav className="mt-8 flex flex-col gap-1">
           {NAV.map((item) => {
             const Icon = item.icon;
@@ -65,12 +65,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
 
-      <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 backdrop-blur md:hidden">
-        <span className="text-sm font-bold uppercase tracking-[0.16em]">SIKKAAA</span>
-        <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-          Paper
-        </span>
-      </header>
+      {pathname !== "/" && (
+        <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border bg-bg/90 px-4 backdrop-blur md:hidden">
+          <span className="text-sm font-bold uppercase tracking-[0.16em]">SIKKAAA</span>
+        </header>
+      )}
 
       <main className="pb-28 md:pb-8">
         <div key={`${pathname}:${view ?? "trade"}`} className="screen-in">
