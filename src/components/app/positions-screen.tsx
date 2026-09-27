@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { market } from "@/lib/market/engine";
 import { getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
@@ -10,6 +11,7 @@ export function PositionsScreen() {
   const positions = useTradeStore((s) => s.positions);
   const history = useTradeStore((s) => s.history);
   const closePosition = useTradeStore((s) => s.closePosition);
+  const [tab, setTab] = useState<"open" | "closed">("open");
   const floating = positions.reduce((sum, pos) => {
     const q = market.getQuote(pos.symbol);
     return sum + positionPnl(pos, q.bid, q.ask);
@@ -21,8 +23,17 @@ export function PositionsScreen() {
       <p className={`mt-2 text-sm ${floating >= 0 ? "text-buy" : "text-sell"}`}>
         Open P/L {formatSigned(floating)}
       </p>
-      <h2 className="mt-6 text-xs uppercase tracking-[0.16em] text-subtle">Open ({positions.length})</h2>
-      <ul className="mt-3 space-y-3">
+      <div className="mt-4 grid grid-cols-2 rounded-2xl bg-bg-subtle p-1 text-sm">
+        <button type="button" onClick={() => setTab("open")} className={`h-10 rounded-xl ${tab === "open" ? "bg-bg-elevated text-fg gold-ring" : "text-muted"}`}>
+          Open positions
+        </button>
+        <button type="button" onClick={() => setTab("closed")} className={`h-10 rounded-xl ${tab === "closed" ? "bg-bg-elevated text-fg gold-ring" : "text-muted"}`}>
+          Closed / history
+        </button>
+      </div>
+      {tab === "open" && (
+      <>
+      <ul className="mt-4 space-y-3">
         {positions.map((pos) => {
           const inst = getInstrument(pos.symbol);
           const q = market.getQuote(pos.symbol);
@@ -59,8 +70,10 @@ export function PositionsScreen() {
         })}
         {positions.length === 0 && <p className="text-sm text-muted">No open trade. Use Trade, then BUY or SELL.</p>}
       </ul>
-      <h2 className="mt-8 text-xs uppercase tracking-[0.16em] text-subtle">Closed ({history.length})</h2>
-      <ul className="mt-3 divide-y divide-border">
+      </>
+      )}
+      {tab === "closed" && (
+      <ul className="mt-4 divide-y divide-border">
         {history.slice(0, 20).map((row) => {
           const inst = getInstrument(row.symbol);
           return (
@@ -74,6 +87,7 @@ export function PositionsScreen() {
         })}
         {history.length === 0 && <p className="py-3 text-sm text-muted">Closed trades show up here.</p>}
       </ul>
+      )}
     </div>
   );
 }

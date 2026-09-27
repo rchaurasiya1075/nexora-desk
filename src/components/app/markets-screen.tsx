@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Sparkline } from "@/components/trade/sparkline";
 import { market } from "@/lib/market/engine";
-import { INSTRUMENTS } from "@/lib/market/instruments";
+import { INSTRUMENTS, type AssetClass } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
 import { formatPct, formatPrice } from "@/lib/utils";
 
@@ -24,10 +25,12 @@ export function rememberPair(symbol: string) {
 export function MarketsScreen() {
   useMarketTick();
   const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<"all" | AssetClass>("all");
   const recent = readRecent();
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return INSTRUMENTS.filter((inst) => {
+      if (filter !== "all" && inst.assetClass !== filter) return false;
       if (!needle) return true;
       return (
         inst.display.toLowerCase().includes(needle) ||
@@ -35,17 +38,36 @@ export function MarketsScreen() {
         inst.symbol.toLowerCase().includes(needle)
       );
     });
-  }, [q]);
+  }, [q, filter]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="font-display text-3xl">Markets</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Markets</h1>
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search forex pair"
-        className="mt-4 h-11 w-full rounded-xl border border-border bg-transparent px-3 text-sm outline-none"
+        placeholder="Search forex, gold, crypto"
+        className="mt-4 h-12 w-full rounded-2xl border border-border bg-bg-elevated px-4 text-sm outline-none focus:border-accent"
       />
+      <div className="mt-3 flex gap-2 overflow-x-auto">
+        {(
+          [
+            ["all", "All"],
+            ["forex", "Forex"],
+            ["metals", "Metals"],
+            ["crypto", "Crypto"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setFilter(id)}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs ${filter === id ? "bg-accent text-accent-fg" : "bg-bg-subtle text-muted"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {recent.length > 0 && !q && (
         <div className="mt-4 flex gap-2 overflow-x-auto">
           {recent.map((symbol) => {
@@ -71,10 +93,13 @@ export function MarketsScreen() {
           return (
             <li key={inst.symbol} className="flex items-center gap-3 py-3">
               <Link to="/trade" search={{ symbol: inst.symbol }} className="min-w-0 flex-1">
-                <span className="block text-sm">{inst.display}</span>
-                <span className="text-[11px] text-muted">{inst.name}</span>
+                <span className="block text-sm font-medium">{inst.display}</span>
+                <span className="text-[11px] text-muted">
+                  Bid {formatPrice(quote.bid, inst.digits)} · Ask {formatPrice(quote.ask, inst.digits)}
+                </span>
               </Link>
-              <span className="text-right">
+              <Sparkline values={market.getCandles(inst.symbol, "15m").slice(-18).map((c) => c.c)} up={up} />
+              <span className="w-24 text-right">
                 <span className="block num text-sm">{formatPrice(quote.mid, inst.digits)}</span>
                 <span className={up ? "text-xs text-buy" : "text-xs text-sell"}>{formatPct(quote.changePct)}</span>
               </span>

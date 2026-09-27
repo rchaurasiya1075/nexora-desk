@@ -39,6 +39,7 @@ export function TradeScreen({ symbol }: { symbol?: string }) {
   const lots = useMemo(() => lotsFor(inst, Number.isFinite(usd) ? usd : 0, quote.ask), [inst, usd, quote.ask]);
   const margin = requiredMargin(inst, lots, quote.ask);
   const mine = positions.filter((pos) => pos.symbol === selected);
+  const floating = mine.reduce((sum, pos) => sum + positionPnl(pos, quote.bid, quote.ask), 0);
 
   function ask(side: Side) {
     if (!Number.isFinite(usd) || usd <= 0) {
@@ -112,14 +113,28 @@ export function TradeScreen({ symbol }: { symbol?: string }) {
 
       <section className="rounded-xl border border-border p-4">
         <p className="text-xs uppercase tracking-[0.16em] text-subtle">Amount</p>
-        <div className="mt-2 flex items-center rounded-xl bg-bg-subtle px-3">
+        <div className="mt-2 flex items-center rounded-2xl bg-bg-subtle">
+          <button
+            type="button"
+            className="h-14 w-12 text-lg text-muted"
+            onClick={() => setAmount(String(Math.max(10, (Number(amount) || 0) - 50)))}
+          >
+            −
+          </button>
           <span className="text-muted">$</span>
           <input
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="h-12 w-full bg-transparent px-2 text-lg outline-none"
+            className="h-14 w-full bg-transparent px-2 text-center text-lg font-semibold outline-none"
           />
+          <button
+            type="button"
+            className="h-14 w-12 text-lg text-muted"
+            onClick={() => setAmount(String((Number(amount) || 0) + 50))}
+          >
+            +
+          </button>
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {QUICK.map((n) => (
@@ -132,11 +147,13 @@ export function TradeScreen({ symbol }: { symbol?: string }) {
           About {formatMoney(margin)} margin · {lots.toFixed(2)} lots
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => ask("buy")} className="h-16 rounded-xl bg-buy text-lg font-semibold text-buy-fg">
-            BUY ↑
+          <button type="button" onClick={() => ask("buy")} className="h-[4.5rem] rounded-2xl bg-buy text-buy-fg transition-transform active:scale-[0.98]">
+            <span className="block text-xs font-medium tracking-wide">BUY</span>
+            <span className="num text-lg font-semibold">{formatPrice(quote.ask, inst.digits)}</span>
           </button>
-          <button type="button" onClick={() => ask("sell")} className="h-16 rounded-xl bg-sell text-lg font-semibold text-sell-fg">
-            SELL ↓
+          <button type="button" onClick={() => ask("sell")} className="h-[4.5rem] rounded-2xl bg-sell text-sell-fg transition-transform active:scale-[0.98]">
+            <span className="block text-xs font-medium tracking-wide">SELL</span>
+            <span className="num text-lg font-semibold">{formatPrice(quote.bid, inst.digits)}</span>
           </button>
         </div>
         <div className="mt-5">
@@ -167,6 +184,12 @@ export function TradeScreen({ symbol }: { symbol?: string }) {
         </div>
       </section>
 
+      {mine.length > 0 && (
+        <div className="fixed inset-x-0 bottom-16 z-20 mx-auto flex max-w-3xl items-center justify-between border-t border-border bg-bg/95 px-4 py-2 text-sm backdrop-blur md:bottom-0 md:left-56">
+          <span className="text-muted">Open {inst.display}</span>
+          <span className={floating >= 0 ? "font-semibold text-buy" : "font-semibold text-sell"}>{formatSigned(floating)}</span>
+        </div>
+      )}
       {pending && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 md:items-center">
           <div className="w-full max-w-sm rounded-2xl bg-bg p-5 shadow-2xl">

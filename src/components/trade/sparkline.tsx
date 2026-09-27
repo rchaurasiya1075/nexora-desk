@@ -31,7 +31,7 @@ export function Sparkline({
       <path
         d={d}
         fill="none"
-        stroke={up ? "#3D9A78" : "#C45B66"}
+        stroke={up ? "#00E676" : "#FF5252"}
         strokeWidth="1.5"
         strokeLinejoin="round"
         strokeLinecap="round"

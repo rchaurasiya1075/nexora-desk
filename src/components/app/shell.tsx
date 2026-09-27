@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 search={item.search}
                 className={cn(
                   "flex h-11 items-center gap-3 rounded-lg px-3 text-sm",
-                  on ? "bg-bg-subtle text-fg" : "text-muted hover:text-fg",
+                  on ? "bg-bg-subtle text-accent gold-ring" : "text-muted hover:text-fg",
                 )}
               >
                 <Icon className="size-4" />
@@ -72,7 +72,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </span>
       </header>
 
-      <main className="pb-24 md:pb-8">{children}</main>
+      <main className="pb-28 md:pb-8">
+        <div key={`${pathname}:${view ?? "trade"}`} className="screen-in">
+          {children}
+        </div>
+      </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 backdrop-blur md:hidden">
         <ul className="grid grid-cols-5">
@@ -92,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <span
                     className={cn(
                       "flex items-center justify-center",
-                      item.center && "size-11 -mt-5 rounded-full bg-fg text-bg shadow-lg",
+                      item.center && "size-12 -mt-6 rounded-full bg-accent text-accent-fg shadow-[0_8px_24px_rgba(198,161,91,0.35)]",
                       item.center && on && "ring-2 ring-buy",
                     )}
                   >
