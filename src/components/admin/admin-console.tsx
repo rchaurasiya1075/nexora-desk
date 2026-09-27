@@ -184,7 +184,7 @@ export function AdminConsole() {
     <div className="flex min-h-dvh bg-[#07080a] text-fg">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-black/40 md:flex">
         <div className="border-b border-white/10 px-4 py-5">
-          <p className="text-lg font-bold uppercase tracking-[0.12em]">SIKKAAA</p>
+          <p className="text-lg font-bold uppercase tracking-[0.12em]">MORGAN MAX</p>
           <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-muted">Admin desk</p>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">

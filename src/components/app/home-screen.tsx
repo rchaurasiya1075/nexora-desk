@@ -7,6 +7,7 @@ import { useMarketTick } from "@/lib/market/use-market";
 import { useDeskSession } from "@/lib/firebase/session";
 import { ARTICLES } from "@/lib/news";
 import { positionPnl, useTradeStore } from "@/lib/trading/store";
+import { Logo } from "@/components/layout/site-header";
 import { formatMoney, formatPct, formatPrice, formatSigned } from "@/lib/utils";
 
 const HOME = ["EURUSD", "GBPUSD", "XAUUSD", "USDJPY", "BTCUSD", "USDCHF"];
@@ -53,7 +54,7 @@ export function HomeScreen() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-4">
       <header className="flex items-center justify-between">
-        <span className="font-display text-[1.7rem] tracking-[0.16em]">SIKKAAA</span>
+        <Logo />
         <div className="flex items-center gap-2">
           <Link to="/markets" className="flex size-10 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
             <Search className="size-4" />

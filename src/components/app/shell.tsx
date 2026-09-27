@@ -3,6 +3,7 @@ import { Briefcase, Home, LineChart, User, ArrowLeftRight } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { market } from "@/lib/market/engine";
 import { useTradeStore } from "@/lib/trading/store";
+import { Logo } from "@/components/layout/site-header";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -36,9 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-bg text-fg md:pl-56">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-border bg-bg px-3 py-5 md:flex">
-        <Link to="/" className="px-3 font-display text-[1.7rem] tracking-[0.14em]">
-          SIKKAAA
-        </Link>
+        <Logo />
         <p className="mt-1 px-3 text-[11px] tracking-[0.08em] text-subtle">Trade smarter</p>
         <nav className="mt-8 flex flex-col gap-1">
           {NAV.map((item) => {
@@ -67,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {pathname !== "/" && (
         <header className="sticky top-0 z-20 flex h-14 items-center border-b border-border bg-bg/90 px-4 backdrop-blur md:hidden">
-          <span className="font-display text-2xl tracking-[0.16em]">SIKKAAA</span>
+          <Logo />
         </header>
       )}
 

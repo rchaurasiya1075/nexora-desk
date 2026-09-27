@@ -31,7 +31,7 @@ export function AccountBar({ onDeposit }: { onDeposit: () => void }) {
     <div className="flex h-12 shrink-0 items-center gap-3 bg-desk px-3 text-desk-fg">
       <Logo compact />
       <Link to="/" className="hidden text-sm font-bold uppercase tracking-[0.14em] sm:block">
-        SIKKAAA
+        MORGAN MAX
       </Link>
       <div className="hidden items-center gap-2 border-l border-desk-line pl-3 lg:flex">
         <span className="size-1.5 rounded-full bg-buy" />

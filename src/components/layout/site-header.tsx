@@ -15,14 +15,9 @@ const LINKS = [
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5 text-fg">
-      <span className="relative flex size-8 items-center justify-center rounded-full bg-fg text-bg">
-        <span className="font-display text-lg leading-none">S</span>
-        <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-buy" />
-      </span>
-      {!compact && (
-        <span className="font-display text-[1.65rem] tracking-[0.14em]">SIKKAAA</span>
-      )}
+    <Link to="/" className="flex items-center gap-2 text-fg">
+      <img src="./morgan-max.jpg" alt="" className="size-9 rounded-md object-cover" />
+      {!compact && <span className="font-display text-xl tracking-[0.12em]">MORGAN MAX</span>}
     </Link>
   );
 }
@@ -118,7 +113,7 @@ export function SiteFooter() {
         <div className="max-w-sm">
           <Logo />
           <p className="mt-4 text-sm text-muted">
-            Trade Smarter. Move Faster. SIKKAAA is a paper desk for global
+            Trade Smarter. Move Faster. MORGAN MAX is a desk for global
             markets — forex, gold, crypto, indices and shares. Funding is
             admin-approved paper credit, not a live broker payout.
           </p>

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CandleChart } from "@/components/trade/candle-chart";
+import { TradingViewChart } from "@/components/trade/tv-chart";
 import { rememberPair } from "@/components/app/markets-screen";
 import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
@@ -24,6 +24,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState<Side | null>(null);
   const [placed, setPlaced] = useState<{ side: Side; price: number; amount: number } | null>(null);
+  const [full, setFull] = useState(false);
 
   const opened = useRef("");
 
@@ -116,8 +117,16 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
             </button>
           ))}
         </div>
-        <div className="mt-4 h-72 overflow-hidden rounded-xl border border-border lg:h-[460px]">
-          <CandleChart symbol={selected} onTrade={ask} />
+        <div className={full ? "fixed inset-0 z-50 flex flex-col bg-bg" : "mt-4 h-[68vh] overflow-hidden rounded-xl border border-border lg:h-[520px]"}>
+          <div className="flex h-10 shrink-0 items-center justify-between px-3">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-subtle">Chart · zoom and indicators</span>
+            <button type="button" onClick={() => setFull((v) => !v)} className="text-xs text-fg underline">
+              {full ? "Exit full chart" : "Full chart"}
+            </button>
+          </div>
+          <div className="min-h-0 flex-1">
+            <TradingViewChart symbol={selected} />
+          </div>
         </div>
       </section>
 

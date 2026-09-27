@@ -742,7 +742,7 @@ function Support({ userId, email }: { userId: string; email: string }) {
       <section className="rounded-xl bg-bg-elevated p-4 text-sm text-muted shadow-[var(--shadow-border)]">
         <h2 className="font-display text-2xl text-fg">Terms</h2>
         <p className="mt-3">
-          SIKKAAA is a paper desk. Deposits request admin-approved demo USD. Withdrawals do not
+          MORGAN MAX is a desk. Deposits request admin-approved USD. Withdrawals do not
           move live bank funds until an operator processes them. Prices can be pinned by the desk.
         </p>
       </section>
