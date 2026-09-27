@@ -47,7 +47,7 @@ export function TradingViewChart({ symbol }: { symbol: string }) {
       key={pair}
       title={`${symbol} chart`}
       src={src}
-      className="h-full w-full border-0 bg-[#0b0c0f]"
+      className="absolute inset-0 h-full w-full border-0 bg-[#0b0c0f]"
       allow="fullscreen; clipboard-write"
       allowFullScreen
       referrerPolicy="origin"

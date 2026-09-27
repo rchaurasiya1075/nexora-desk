@@ -9,7 +9,6 @@ import { useMarketTick } from "@/lib/market/use-market";
 import { positionPnl, requiredMargin, useTradeStore, type Side } from "@/lib/trading/store";
 import { formatMoney, formatPct, formatPrice, formatSigned } from "@/lib/utils";
 
-const QUICK = [50, 100, 250, 500, 1000];
 const CHIPS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"];
 
 export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: Side }) {
@@ -75,140 +74,95 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[1fr_320px]">
-      <section className="min-w-0">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <label className="text-[11px] uppercase tracking-[0.16em] text-subtle">Paper trade</label>
-            <select
-              value={selected}
-              onChange={(e) => {
-                select(e.target.value);
-                rememberPair(e.target.value);
-              }}
-              className="mt-1 block bg-transparent text-3xl font-medium outline-none"
-            >
-              {INSTRUMENTS.map((item) => (
-                <option key={item.symbol} value={item.symbol}>
-                  {item.display}
-                </option>
-              ))}
-            </select>
-            <p className="num mt-1 text-3xl font-medium">{formatPrice(quote.mid, inst.digits)}</p>
-            <p className={quote.changePct >= 0 ? "text-sm text-buy" : "text-sm text-sell"}>{formatPct(quote.changePct)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] uppercase tracking-wide text-subtle">Balance</p>
-            <p className="num text-lg">{formatMoney(balance)}</p>
-          </div>
-        </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto">
-          {CHIPS.map((symbol) => (
-            <button
-              key={symbol}
-              type="button"
-              onClick={() => {
-                select(symbol);
-                rememberPair(symbol);
-              }}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs ${selected === symbol ? "bg-fg text-bg" : "bg-bg-subtle text-muted"}`}
-            >
-              {getInstrument(symbol).display}
-            </button>
-          ))}
-        </div>
-        <div className={full ? "fixed inset-0 z-50 flex flex-col bg-bg" : "mt-4 h-[68vh] overflow-hidden rounded-xl border border-border lg:h-[520px]"}>
-          <div className="flex h-10 shrink-0 items-center justify-between px-3">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-subtle">Chart · zoom and indicators</span>
-            <button type="button" onClick={() => setFull((v) => !v)} className="text-xs text-fg underline">
-              {full ? "Exit full chart" : "Full chart"}
-            </button>
-          </div>
-          <div className="min-h-0 flex-1">
-            <TradingViewChart symbol={selected} />
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border p-4">
-        <p className="text-xs uppercase tracking-[0.16em] text-subtle">Amount</p>
-        <div className="mt-2 flex items-center rounded-2xl bg-bg-subtle">
-          <button
-            type="button"
-            className="h-14 w-12 text-lg text-muted"
-            onClick={() => setAmount(String(Math.max(10, (Number(amount) || 0) - 50)))}
+    <div className="-mb-28 flex h-[calc(100dvh-8.6rem)] flex-col px-3 pt-2 md:mb-0 md:h-[calc(100dvh-1.5rem)] md:px-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <select
+            value={selected}
+            onChange={(e) => {
+              select(e.target.value);
+              rememberPair(e.target.value);
+            }}
+            className="block max-w-[11rem] bg-transparent text-xl font-medium outline-none"
           >
+            {INSTRUMENTS.map((item) => (
+              <option key={item.symbol} value={item.symbol}>
+                {item.display}
+              </option>
+            ))}
+          </select>
+          <p className="num text-2xl font-medium leading-none">{formatPrice(quote.mid, inst.digits)}</p>
+          <p className={quote.changePct >= 0 ? "text-xs text-buy" : "text-xs text-sell"}>{formatPct(quote.changePct)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] uppercase tracking-wide text-subtle">Balance</p>
+          <p className="num text-base">{formatMoney(balance)}</p>
+          <button type="button" onClick={() => setFull((v) => !v)} className="mt-1 text-xs text-muted underline">
+            {full ? "Exit" : "Full chart"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+        {CHIPS.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            onClick={() => {
+              select(chip);
+              rememberPair(chip);
+            }}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${selected === chip ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`}
+          >
+            {getInstrument(chip).display}
+          </button>
+        ))}
+      </div>
+
+      <div className={full ? "fixed inset-0 z-40 bg-bg" : "relative mt-1 min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10"}>
+        {full && (
+          <button type="button" onClick={() => setFull(false)} className="absolute right-3 top-3 z-10 rounded-full bg-black/60 px-3 py-1 text-xs">
+            Exit
+          </button>
+        )}
+        <TradingViewChart symbol={selected} />
+      </div>
+
+      <section className="shrink-0 pt-2">
+        <div className="flex items-center gap-2">
+          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String(Math.max(10, (Number(amount) || 0) - 50)))}>
             −
           </button>
-          <span className="text-muted">$</span>
-          <input
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="h-14 w-full bg-transparent px-2 text-center text-lg font-semibold outline-none"
-          />
-          <button
-            type="button"
-            className="h-14 w-12 text-lg text-muted"
-            onClick={() => setAmount(String((Number(amount) || 0) + 50))}
-          >
+          <div className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-full bg-white/10 px-3">
+            <span className="text-muted">$</span>
+            <input
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-24 bg-transparent text-center text-base font-medium outline-none"
+            />
+          </div>
+          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String((Number(amount) || 0) + 50))}>
             +
           </button>
         </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {QUICK.map((n) => (
-            <button key={n} type="button" onClick={() => setAmount(String(n))} className="rounded-full bg-bg-subtle px-2.5 py-1 text-xs text-muted">
-              ${n}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-muted">
-          About {formatMoney(margin)} margin · {lots.toFixed(2)} lots
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => ask("buy")} className="h-[4.5rem] rounded-2xl bg-white text-[#111214] transition-transform active:scale-[0.98]">
-            <span className="block text-xs font-medium tracking-wide">BUY</span>
-            <span className="num text-lg font-semibold">{formatPrice(quote.ask, inst.digits)}</span>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => ask("buy")} className="h-12 rounded-full bg-[#d8f3e4] text-sm font-semibold text-[#146c43] active:scale-[0.98]">
+            BUY {formatPrice(quote.ask, inst.digits)}
           </button>
-          <button type="button" onClick={() => ask("sell")} className="h-[4.5rem] rounded-2xl border border-white/15 bg-white/5 text-fg transition-transform active:scale-[0.98]">
-            <span className="block text-xs font-medium tracking-wide">SELL</span>
-            <span className="num text-lg font-semibold">{formatPrice(quote.bid, inst.digits)}</span>
+          <button type="button" onClick={() => ask("sell")} className="h-12 rounded-full bg-[#fde2e0] text-sm font-semibold text-[#b42318] active:scale-[0.98]">
+            SELL {formatPrice(quote.bid, inst.digits)}
           </button>
         </div>
-        <div className="mt-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-subtle">Open on this pair</p>
-          {mine.length === 0 && <p className="mt-2 text-sm text-muted">Nothing open yet.</p>}
-          {mine.map((pos) => {
-            const q = market.getQuote(pos.symbol);
-            const pnl = positionPnl(pos, q.bid, q.ask);
-            return (
-              <div key={pos.id} className="mt-2 flex items-center justify-between gap-2 text-sm">
-                <span>
-                  {pos.side.toUpperCase()} {formatMoney(Number(amount) || 0)}
-                  <span className={pnl >= 0 ? "ml-2 text-buy" : "ml-2 text-sell"}>{formatSigned(pnl)}</span>
-                </span>
-                <button
-                  type="button"
-                  className="rounded-lg border border-border px-3 py-1.5 text-xs"
-                  onClick={() => closePosition(pos.id)}
-                >
-                  Close
-                </button>
-              </div>
-            );
-          })}
-          <Link to="/trade" search={{ view: "positions" }} className="mt-3 inline-block text-xs text-muted underline">
-            All positions
-          </Link>
-        </div>
+        {mine.length > 0 && (
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <span className={floating >= 0 ? "text-buy" : "text-sell"}>Open P/L {formatSigned(floating)}</span>
+            <Link to="/trade" search={{ view: "positions" }} className="text-muted underline">
+              Positions
+            </Link>
+          </div>
+        )}
       </section>
-
-      {mine.length > 0 && (
-        <div className="fixed inset-x-0 bottom-16 z-20 mx-auto flex max-w-3xl items-center justify-between border-t border-border bg-bg/95 px-4 py-2 text-sm backdrop-blur md:bottom-0 md:left-56">
-          <span className="text-muted">Open {inst.display}</span>
-          <span className={floating >= 0 ? "font-semibold text-buy" : "font-semibold text-sell"}>{formatSigned(floating)}</span>
-        </div>
-      )}
       {pending && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 md:items-center">
           <div className="w-full max-w-sm rounded-2xl bg-bg p-5 shadow-2xl">
