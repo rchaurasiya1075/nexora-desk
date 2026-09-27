@@ -9,8 +9,10 @@ import { toast } from "sonner";
 export function PositionsScreen() {
   useMarketTick();
   const positions = useTradeStore((s) => s.positions);
+  const pending = useTradeStore((s) => s.pending);
   const history = useTradeStore((s) => s.history);
   const closePosition = useTradeStore((s) => s.closePosition);
+  const cancelPending = useTradeStore((s) => s.cancelPending);
   const [tab, setTab] = useState<"open" | "closed">("open");
   const floating = positions.reduce((sum, pos) => {
     const q = market.getQuote(pos.symbol);
@@ -45,7 +47,7 @@ export function PositionsScreen() {
                 <div>
                   <p className="text-sm">{inst.display}</p>
                   <p className="text-xs uppercase text-muted">
-                    {pos.side} · {formatMoney(pos.lots * inst.contractSize * pos.entry)}
+                    {pos.side} · {pos.lots.toFixed(2)} lot · {pos.style === "intraday" ? "Intraday" : "Carry"} · {pos.leverage || inst.leverage}x
                   </p>
                 </div>
                 <p className={pnl >= 0 ? "text-buy" : "text-sell"}>{formatSigned(pnl)}</p>
@@ -53,6 +55,8 @@ export function PositionsScreen() {
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted">
                 <div>Entry {formatPrice(pos.entry, inst.digits)}</div>
                 <div>Current {formatPrice(current, inst.digits)}</div>
+                <div>Stop loss {pos.sl != null ? formatPrice(pos.sl, inst.digits) : "—"}</div>
+                <div>Take profit {pos.tp != null ? formatPrice(pos.tp, inst.digits) : "—"}</div>
               </dl>
               <button
                 type="button"
@@ -70,6 +74,23 @@ export function PositionsScreen() {
         })}
         {positions.length === 0 && <p className="text-sm text-muted">No open trade. Use Trade, then BUY or SELL.</p>}
       </ul>
+      {pending.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {pending.map((order) => {
+            const inst = getInstrument(order.symbol);
+            return (
+              <li key={order.id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm">
+                <span>
+                  {inst.display} {order.kind.toUpperCase()} {order.side.toUpperCase()} @ {formatPrice(order.price, inst.digits)}
+                </span>
+                <button type="button" className="text-xs text-muted underline" onClick={() => cancelPending(order.id)}>
+                  Cancel
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       </>
       )}
       {tab === "closed" && (

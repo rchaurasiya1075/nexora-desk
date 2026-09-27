@@ -313,6 +313,7 @@ export function adminOpenTrade(input: {
       openedAt: Date.now(),
       commission: 0,
       leverage: inst.leverage,
+      style: "carry",
     });
     appendLedger(desk, input.userId, "TRADE_OPEN", 0, `${id} ${input.side} ${input.symbol} @ ${input.entry}. ${input.note}`);
   });

@@ -6,10 +6,10 @@ import { rememberPair } from "@/components/app/markets-screen";
 import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
-import { positionPnl, requiredMargin, useTradeStore, type Side } from "@/lib/trading/store";
+import { positionPnl, requiredMargin, useTradeStore, type HoldStyle, type OrderKind, type Side } from "@/lib/trading/store";
 import { formatMoney, formatPct, formatPrice, formatSigned } from "@/lib/utils";
 
-const CHIPS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"];
+const LEVS = [1, 10, 50, 100];
 
 export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: Side }) {
   useMarketTick();
@@ -19,11 +19,17 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
   const balance = useTradeStore((s) => s.balance);
   const positions = useTradeStore((s) => s.positions);
   const placeMarket = useTradeStore((s) => s.placeMarket);
-  const closePosition = useTradeStore((s) => s.closePosition);
+  const placePending = useTradeStore((s) => s.placePending);
   const [amount, setAmount] = useState("100");
   const [pending, setPending] = useState<Side | null>(null);
   const [placed, setPlaced] = useState<{ side: Side; price: number; amount: number } | null>(null);
   const [full, setFull] = useState(false);
+  const [kind, setKind] = useState<OrderKind>("market");
+  const [hold, setHold] = useState<HoldStyle>("intraday");
+  const [lev, setLev] = useState(50);
+  const [trigger, setTrigger] = useState("");
+  const [sl, setSl] = useState("");
+  const [tp, setTp] = useState("");
 
   const opened = useRef("");
 
@@ -46,8 +52,11 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
   const inst = getInstrument(selected);
   const quote = market.getQuote(selected);
   const usd = Number(amount);
-  const lots = useMemo(() => lotsFor(inst, Number.isFinite(usd) ? usd : 0, quote.ask), [inst, usd, quote.ask]);
-  const margin = requiredMargin(inst, lots, quote.ask);
+  const lots = useMemo(
+    () => lotsFor(inst, Number.isFinite(usd) ? usd : 0, quote.ask, lev),
+    [inst, usd, quote.ask, lev],
+  );
+  const margin = requiredMargin(inst, lots, quote.ask, lev);
   const mine = positions.filter((pos) => pos.symbol === selected);
   const floating = mine.reduce((sum, pos) => sum + positionPnl(pos, quote.bid, quote.ask), 0);
 
@@ -61,14 +70,53 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
 
   function confirm() {
     if (!pending) return;
-    const res = placeMarket({ symbol: selected, side: pending, lots, sl: null, tp: null });
-    if (!res.ok) {
-      toast.error(res.error);
-      setPending(null);
+    const slN = sl.trim() ? Number(sl) : null;
+    const tpN = tp.trim() ? Number(tp) : null;
+    if ((sl.trim() && !Number.isFinite(slN)) || (tp.trim() && !Number.isFinite(tpN))) {
+      toast.error("Stop loss and take profit must be prices.");
       return;
     }
-    const price = pending === "buy" ? quote.ask : quote.bid;
-    setPlaced({ side: pending, price, amount: usd });
+    if (kind === "market") {
+      const res = placeMarket({
+        symbol: selected,
+        side: pending,
+        lots,
+        sl: slN,
+        tp: tpN,
+        style: hold,
+        leverage: lev,
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        setPending(null);
+        return;
+      }
+      const price = pending === "buy" ? quote.ask : quote.bid;
+      setPlaced({ side: pending, price, amount: usd });
+    } else {
+      const price = Number(trigger);
+      if (!Number.isFinite(price) || price <= 0) {
+        toast.error("Enter the limit or stop price.");
+        return;
+      }
+      const res = placePending({
+        symbol: selected,
+        side: pending,
+        kind,
+        lots,
+        price,
+        sl: slN,
+        tp: tpN,
+        style: hold,
+        leverage: lev,
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        setPending(null);
+        return;
+      }
+      setPlaced({ side: pending, price, amount: usd });
+    }
     setPending(null);
     rememberPair(selected);
   }
@@ -104,17 +152,22 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
       </div>
 
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-        {CHIPS.map((chip) => (
-          <button
-            key={chip}
-            type="button"
-            onClick={() => {
-              select(chip);
-              rememberPair(chip);
-            }}
-            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${selected === chip ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`}
-          >
-            {getInstrument(chip).display}
+        {(["market", "limit", "stop"] as const).map((item) => (
+          <button key={item} type="button" onClick={() => setKind(item)} className={chip(kind === item)}>
+            {item === "market" ? "Market" : item === "limit" ? "Limit" : "Stop"}
+          </button>
+        ))}
+        <span className="w-2 shrink-0" />
+        <button type="button" onClick={() => setHold("intraday")} className={chip(hold === "intraday")}>
+          Intraday
+        </button>
+        <button type="button" onClick={() => setHold("carry")} className={chip(hold === "carry")}>
+          Carry
+        </button>
+        <span className="w-2 shrink-0" />
+        {LEVS.map((n) => (
+          <button key={n} type="button" onClick={() => setLev(n)} className={chip(lev === n)}>
+            {n}x
           </button>
         ))}
       </div>
@@ -128,7 +181,32 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
         <TradingViewChart symbol={selected} />
       </div>
 
-      <section className="shrink-0 pt-2">
+      <section className="shrink-0 space-y-2 pt-2">
+        {kind !== "market" && (
+          <input
+            inputMode="decimal"
+            value={trigger}
+            placeholder={kind === "limit" ? "Limit price" : "Stop trigger"}
+            onChange={(e) => setTrigger(e.target.value)}
+            className="h-10 w-full rounded-full bg-white/10 px-4 text-center text-sm outline-none"
+          />
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            inputMode="decimal"
+            value={sl}
+            placeholder="Stop loss"
+            onChange={(e) => setSl(e.target.value)}
+            className="h-9 rounded-full bg-white/10 px-3 text-center text-xs outline-none"
+          />
+          <input
+            inputMode="decimal"
+            value={tp}
+            placeholder="Take profit"
+            onChange={(e) => setTp(e.target.value)}
+            className="h-9 rounded-full bg-white/10 px-3 text-center text-xs outline-none"
+          />
+        </div>
         <div className="flex items-center gap-2">
           <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String(Math.max(10, (Number(amount) || 0) - 50)))}>
             −
@@ -171,9 +249,14 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
               {pending.toUpperCase()} {inst.display}
             </h2>
             <dl className="mt-4 space-y-2 text-sm">
-              <Row k="Price" v={formatPrice(pending === "buy" ? quote.ask : quote.bid, inst.digits)} />
+              <Row k="Type" v={kind === "market" ? "Market" : kind === "limit" ? "Limit" : "Stop"} />
+              <Row k="Style" v={hold === "intraday" ? "Intraday" : "Carry forward"} />
+              <Row k="Leverage" v={`${lev}x`} />
+              <Row k="Price" v={kind === "market" ? formatPrice(pending === "buy" ? quote.ask : quote.bid, inst.digits) : trigger || "—"} />
               <Row k="Amount" v={formatMoney(usd)} />
-              <Row k="Direction" v={pending.toUpperCase()} />
+              <Row k="Margin" v={formatMoney(margin)} />
+              <Row k="Stop loss" v={sl || "—"} />
+              <Row k="Take profit" v={tp || "—"} />
             </dl>
             <div className="mt-6 grid grid-cols-2 gap-2">
               <button type="button" className="h-12 rounded-xl border border-border" onClick={() => setPending(null)}>
@@ -229,8 +312,13 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-function lotsFor(inst: ReturnType<typeof getInstrument>, usd: number, price: number) {
+function lotsFor(inst: ReturnType<typeof getInstrument>, usd: number, price: number, leverage: number) {
   if (!Number.isFinite(usd) || usd <= 0 || price <= 0) return 0.01;
-  const lots = (usd * inst.leverage) / (inst.contractSize * price);
+  const used = leverage > 0 ? leverage : inst.leverage;
+  const lots = (usd * used) / (inst.contractSize * price);
   return Math.min(50, Math.max(0.01, Math.round(lots * 100) / 100));
+}
+
+function chip(on: boolean) {
+  return `shrink-0 rounded-full px-2.5 py-1 text-[11px] ${on ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`;
 }

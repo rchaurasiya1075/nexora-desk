@@ -10,6 +10,7 @@ import {
 
 export type Side = "buy" | "sell";
 export type OrderKind = "market" | "limit" | "stop";
+export type HoldStyle = "intraday" | "carry";
 export type Position = {
   id: string;
   symbol: string;
@@ -21,6 +22,7 @@ export type Position = {
   openedAt: number;
   commission: number;
   leverage: number;
+  style: HoldStyle;
 };
 export type PendingOrder = {
   id: string;
@@ -32,6 +34,8 @@ export type PendingOrder = {
   sl: number | null;
   tp: number | null;
   createdAt: number;
+  style: HoldStyle;
+  leverage: number;
 };
 export type HistoryRow = {
   id: string;
@@ -54,8 +58,9 @@ export function notional(inst: Instrument, lots: number, price: number) {
   return inst.contractSize * lots * price;
 }
 
-export function requiredMargin(inst: Instrument, lots: number, price: number) {
-  return notional(inst, lots, price) / inst.leverage;
+export function requiredMargin(inst: Instrument, lots: number, price: number, leverage = inst.leverage) {
+  const used = leverage > 0 ? leverage : inst.leverage;
+  return notional(inst, lots, price) / used;
 }
 
 export function positionPnl(pos: Position, bid: number, ask: number) {
@@ -106,6 +111,8 @@ type TradeState = BookSlice & {
     lots: number;
     sl: number | null;
     tp: number | null;
+    style?: HoldStyle;
+    leverage?: number;
   }) => { ok: true; id: string } | { ok: false; error: string };
   placePending: (input: {
     symbol: string;
@@ -115,6 +122,8 @@ type TradeState = BookSlice & {
     price: number;
     sl: number | null;
     tp: number | null;
+    style?: HoldStyle;
+    leverage?: number;
   }) => { ok: true; id: string } | { ok: false; error: string };
   closePosition: (id: string, lots?: number) => { ok: true } | { ok: false; error: string };
   updateSlTp: (id: string, sl: number | null, tp: number | null) => void;
@@ -144,6 +153,8 @@ function openPosition(
     lots: number;
     sl: number | null;
     tp: number | null;
+    style?: HoldStyle;
+    leverage?: number;
   },
   pricing: AccountPricing,
 ): Position {
@@ -160,8 +171,18 @@ function openPosition(
     tp: input.tp,
     openedAt: Date.now(),
     commission: commissionCost(inst, input.lots, pricing),
-    leverage: inst.leverage,
+    leverage: input.leverage && input.leverage > 0 ? input.leverage : inst.leverage,
+    style: input.style ?? "carry",
   };
+}
+
+function istDay(ts: number) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(ts);
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -280,7 +301,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     const inst = getInstrument(input.symbol);
     const q = market.getQuote(input.symbol);
     const entry = input.side === "buy" ? q.ask : q.bid;
-    const margin = requiredMargin(inst, input.lots, entry);
+    const margin = requiredMargin(inst, input.lots, entry, input.leverage);
     const { equity, free } = snapshot(get());
     if (margin > free) {
       return {
@@ -303,10 +324,19 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     if (input.price <= 0) return { ok: false, error: "Enter a valid trigger price." };
     const freeze = blocked(get());
     if (freeze) return { ok: false, error: freeze };
+    const inst = getInstrument(input.symbol);
     const order: PendingOrder = {
       id: uid(),
-      ...input,
+      symbol: input.symbol,
+      side: input.side,
+      kind: input.kind,
+      lots: input.lots,
+      price: input.price,
+      sl: input.sl,
+      tp: input.tp,
       createdAt: Date.now(),
+      style: input.style ?? "carry",
+      leverage: input.leverage && input.leverage > 0 ? input.leverage : inst.leverage,
     };
     set({
       pending: [...get().pending, order],
@@ -413,7 +443,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
         const inst = getInstrument(order.symbol);
         const q = market.getQuote(order.symbol);
         const entry = order.side === "buy" ? q.ask : q.bid;
-        const margin = requiredMargin(inst, order.lots, entry);
+        const margin = requiredMargin(inst, order.lots, entry, order.leverage);
         const snap = snapshot({ ...state, positions, balance });
         if (margin > snap.free) {
           pending = pending.filter((p) => p.id !== order.id);
@@ -443,13 +473,15 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
       const q = market.getQuote(pos.symbol);
       const bid = q.bid;
       const ask = q.ask;
+      const today = istDay(Date.now());
+      const expired = pos.style === "intraday" && istDay(pos.openedAt) !== today;
       const hitSl =
         pos.sl != null &&
         (pos.side === "buy" ? bid <= pos.sl : ask >= pos.sl);
       const hitTp =
         pos.tp != null &&
         (pos.side === "buy" ? bid >= pos.tp : ask <= pos.tp);
-      if (!hitSl && !hitTp) {
+      if (!hitSl && !hitTp && !expired) {
         still.push(pos);
         continue;
       }
@@ -471,9 +503,11 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
         ...history,
       ].slice(0, 80);
       balance += pnl;
-      toast = hitSl
-        ? `Stop hit on ${pos.symbol}`
-        : `Take profit hit on ${pos.symbol}`;
+      toast = expired
+        ? `Intraday squared off ${pos.symbol}`
+        : hitSl
+          ? `Stop hit on ${pos.symbol}`
+          : `Take profit hit on ${pos.symbol}`;
       dirty = true;
     }
 
