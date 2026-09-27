@@ -16,17 +16,23 @@ type Tool = "cross" | "hline" | "trend";
 export function CandleChart({
   symbol,
   onTrade,
+  entry,
+  timeframe = "15m",
+  compact = false,
 }: {
   symbol: string;
   onTrade?: (side: Side) => void;
+  entry?: number | null;
+  timeframe?: Timeframe;
+  compact?: boolean;
 }) {
   useMarketTick();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const drawRef = useRef<() => void>(() => {});
   const hoverRef = useRef<{ x: number; y: number; i: number } | null>(null);
-  const [tf, setTf] = useState<Timeframe>("15m");
-  const [macdOn, setMacdOn] = useState(true);
+  const [tf, setTf] = useState<Timeframe>(timeframe);
+  const [macdOn, setMacdOn] = useState(!compact);
   const [tool, setTool] = useState<Tool>("cross");
   const [hover, setHover] = useState<{ x: number; y: number; i: number } | null>(null);
 
@@ -120,6 +126,22 @@ export function CandleChart({
       ctx.fillStyle = "#09090B";
       ctx.fillText(formatPrice(q.mid, inst.digits), w - padR + 8, py + 3);
 
+      if (entry && entry > 0) {
+        const ey = yOf(entry);
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = "#F2F1ED";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(padL, ey);
+        ctx.lineTo(w - padR, ey);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#F2F1ED";
+        ctx.fillRect(padL, ey - 9, 58, 16);
+        ctx.fillStyle = "#111214";
+        ctx.fillText("ENTRY", padL + 8, ey + 3);
+      }
+
       if (macdOn) {
         const macd = macdOf(visible.map((c) => c.c));
         const macdTop = h - macdH;
@@ -203,7 +225,7 @@ export function CandleChart({
       ro.disconnect();
       unsub();
     };
-  }, [symbol, tf, inst.digits, macdOn, tool]);
+  }, [symbol, tf, inst.digits, macdOn, tool, entry]);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-bg">
