@@ -37,6 +37,7 @@ export function QuickScreen() {
 
   const inst = getInstrument(selected);
   const quote = market.getQuote(selected);
+  if (!quote) return <p className="p-4 text-sm text-muted">Waiting for the price.</p>;
   const typed = Number(amount);
   const stake = ccy === "INR" ? (Number.isFinite(typed) ? typed / rate : 0) : typed;
   const rateBack = payoutRate(selected);

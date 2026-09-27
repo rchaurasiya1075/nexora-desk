@@ -16,19 +16,23 @@ export type OptionBet = {
 
 const KEY = "morgan.options.v1";
 const listeners = new Set<() => void>();
+let cache: OptionBet[] | null = null;
 
 function read(): OptionBet[] {
+  if (cache) return cache;
   if (typeof window === "undefined") return [];
   try {
     const rows = JSON.parse(localStorage.getItem(KEY) || "[]") as OptionBet[];
-    return Array.isArray(rows) ? rows : [];
+    cache = Array.isArray(rows) ? rows : [];
   } catch {
-    return [];
+    cache = [];
   }
+  return cache;
 }
 
 function write(rows: OptionBet[]) {
-  localStorage.setItem(KEY, JSON.stringify(rows.slice(0, 40)));
+  cache = rows.slice(0, 40);
+  localStorage.setItem(KEY, JSON.stringify(cache));
   listeners.forEach((fn) => fn());
 }
 

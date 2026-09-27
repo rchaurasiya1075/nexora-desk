@@ -29,6 +29,7 @@ export function OptionsScreen() {
 
   const inst = getInstrument(selected);
   const quote = market.getQuote(selected);
+  if (!quote) return <p className="p-4 text-sm text-muted">Waiting for the price.</p>;
   const typed = Number(amount);
   const premium = ccy === "INR" ? (Number.isFinite(typed) ? typed / rate : 0) : typed;
   const chain = strikesAround(quote.mid);
