@@ -182,7 +182,7 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
             Exit
           </button>
         )}
-        <TradingViewChart symbol={selected} />
+        <TradingViewChart symbol={selected} interval="1" />
       </div>
 
       <section className="shrink-0 space-y-2 pt-2">

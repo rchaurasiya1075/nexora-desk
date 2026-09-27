@@ -36,19 +36,21 @@ const TV: Record<string, string> = {
   GOOGL: "NASDAQ:GOOGL",
 };
 
-export function TradingViewChart({ symbol }: { symbol: string }) {
+export function TradingViewChart({ symbol, interval = "1" }: { symbol: string; interval?: string }) {
   const pair = TV[symbol] ?? `FX:${symbol}`;
   const src =
     "https://www.tradingview.com/widgetembed/?symbol=" +
     encodeURIComponent(pair) +
-    "&interval=15&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=0&saveimage=0" +
+    "&interval=" +
+    encodeURIComponent(interval) +
+    "&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=0&saveimage=0" +
     "&toolbarbg=0b0c0f&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1" +
-    "&hideideas=1&locale=en&utm_source=sikkaaa.in&utm_medium=widget&utm_campaign=chart";
+    "&hideideas=1&details=1&locale=en&utm_source=sikkaaa.in&utm_medium=widget&utm_campaign=chart";
 
   return (
     <iframe
-      key={pair}
-      title={`${symbol} chart`}
+      key={`${pair}-${interval}`}
+      title={`${symbol} live chart`}
       src={src}
       className="absolute inset-0 h-full w-full border-0 bg-[#0b0c0f]"
       allow="fullscreen; clipboard-write"
