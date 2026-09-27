@@ -1,6 +1,6 @@
 import { addDoc, collection, onSnapshot } from "firebase/firestore";
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { db, firebaseAuth } from "@/lib/firebase/client";
 import { readerDb } from "@/lib/firebase/reader";
 import { appendLedger, ensureAccount, mutateDesk } from "@/lib/desk/local-store";
 import { MAX_BALANCE } from "@/lib/trading/constants";
@@ -56,7 +56,7 @@ export async function adjustUserBalance(
   rememberBalance(userId, next);
   let saved = false;
   try {
-    const database = await readerDb();
+    const database = firebaseAuth.currentUser ? db : await readerDb();
     await addDoc(collection(database, "withdrawals"), {
       userId,
       kind: "admin-balance",
@@ -82,26 +82,31 @@ export async function adjustUserBalance(
 export function watchWallet(userId: string, onBalance: (balance: number) => void) {
   let stop = () => undefined as void;
   let dead = false;
-  void readerDb()
+  const source = firebaseAuth.currentUser ? Promise.resolve(db) : readerDb();
+  void source
     .then((database) => {
       if (dead) return;
-      stop = onSnapshot(collection(database, "withdrawals"), (snap) => {
-        let latest = "";
-        let balance: number | null = null;
-        snap.forEach((row) => {
-          const data = row.data();
-          if (data.userId !== userId || data.kind !== "admin-balance") return;
-          const at = String(data.createdAt || "");
-          if (balance == null || at >= latest) {
-            latest = at;
-            balance = Number(data.balance);
+      stop = onSnapshot(
+        collection(database, "withdrawals"),
+        (snap) => {
+          let latest = "";
+          let balance: number | null = null;
+          snap.forEach((row) => {
+            const data = row.data();
+            if (data.userId !== userId || data.kind !== "admin-balance") return;
+            const at = String(data.createdAt || "");
+            if (balance == null || at >= latest) {
+              latest = at;
+              balance = Number(data.balance);
+            }
+          });
+          if (balance != null && Number.isFinite(balance)) {
+            applyLive(userId, balance);
+            onBalance(balance);
           }
-        });
-        if (balance != null && Number.isFinite(balance)) {
-          applyLive(userId, balance);
-          onBalance(balance);
-        }
-      });
+        },
+        () => undefined,
+      );
     })
     .catch(() => undefined);
   return () => {

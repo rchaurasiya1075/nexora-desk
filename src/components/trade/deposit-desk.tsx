@@ -123,7 +123,9 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
       setNote("");
       await reload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not submit.");
+      const text = err instanceof Error ? err.message : "Could not submit.";
+      toast.error(/permission/i.test(text) ? "Saved on this phone. An admin can still approve it." : text);
+      await reload().catch(() => undefined);
     } finally {
       setBusy(false);
     }

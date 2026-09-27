@@ -3,6 +3,7 @@ import { getSessionUser, loadDesk } from "@/lib/desk/local-store";
 import { addDoc, collection } from "firebase/firestore";
 import { db, firebaseAuth } from "@/lib/firebase/client";
 import { readerDb } from "@/lib/firebase/reader";
+import type { DepositRequest } from "@/lib/ops/types";
 import { builtinCurrencies, builtinMethods } from "@/lib/ops/rails";
 import { toUsd } from "@/lib/ops/money";
 import { adjustUserBalance, balanceOverride } from "@/lib/ops/balance-adjust";
@@ -36,7 +37,20 @@ export async function listPaymentMethods(input?: Parameters<typeof localApi.list
   return api().listPaymentMethods(input);
 }
 export async function listMyDeposits() {
-  return api().listMyDeposits();
+  const rows = new Map<string, DepositRequest>();
+  try {
+    for (const row of await localApi.listMyDeposits()) rows.set(row.reference || String(row.id), row);
+  } catch {
+    /* firebase-only login has no local book */
+  }
+  if (firebaseAuth.currentUser) {
+    try {
+      for (const row of await firebaseApi.listMyDeposits()) rows.set(row.reference || row.docId || String(row.id), row);
+    } catch {
+      /* rules can block the list; the local request still shows */
+    }
+  }
+  return [...rows.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 export async function createDepositRequest(
   input: Parameters<typeof localApi.createDepositRequest>[0],
@@ -44,44 +58,54 @@ export async function createDepositRequest(
   const method = builtinMethods().find((row) => row.id === Number(input.data.methodId));
   const rate = builtinCurrencies().find((row) => row.code === method?.currency)?.unitsPerUsd ?? 83.5;
   const usd = method ? toUsd(Number(input.data.amount) || 0, rate) : 0;
-  let result: { id: number; usdCredit: number } | null = null;
-  try {
-    result = await api().createDepositRequest(input);
-  } catch {
-    result = null;
-  }
   const person = firebaseAuth.currentUser;
   const local = getSessionUser();
   const userId = person?.uid || local?.id || "";
-  if (userId && method) {
+  if (!userId) throw new Error("Sign in, then submit the deposit.");
+  if (!method) throw new Error("Pick UPI, QR or bank.");
+  if (String(input.data.payerName || "").trim().length < 2) throw new Error("Enter the name on the transfer.");
+  if (String(input.data.reference || "").trim().length < 4) throw new Error("Enter the UTR or UPI reference.");
+
+  let result: { id: number; usdCredit: number } | null = null;
+  try {
+    result = await localApi.createDepositRequest(input);
+  } catch {
+    result = null;
+  }
+  if (!result) {
     try {
-      const database = person ? db : await readerDb();
-      const ref = await addDoc(collection(database, "deposits"), {
-        userId,
-        userName: person?.displayName || local?.name || person?.email || local?.email || "Trader",
-        userEmail: person?.email || local?.email || "",
-        amountLocal: Number(input.data.amount) || 0,
-        amountUSD: result?.usdCredit || usd,
-        currencyLocal: method.currency,
-        paymentMethod: method.title,
-        methodTitle: method.title,
-        methodKind: method.kind,
-        amount: Number(input.data.amount) || 0,
-        currency: method.currency,
-        usdCredit: result?.usdCredit || usd,
-        payerName: input.data.payerName,
-        reference: input.data.reference,
-        utrNumber: input.data.reference,
-        note: input.data.note || null,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      });
-      if (!result) result = { id: stableDepositId(ref.id), usdCredit: usd };
+      result = await firebaseApi.createDepositRequest(input);
     } catch {
-      /* local request still stands when the first call succeeded */
+      result = null;
     }
   }
-  if (!result) throw new Error("Could not submit the deposit. Sign in and enter the UTR.");
+  try {
+    const database = person ? db : await readerDb();
+    const ref = await addDoc(collection(database, "deposits"), {
+      userId,
+      userName: person?.displayName || local?.name || person?.email || local?.email || "Trader",
+      userEmail: person?.email || local?.email || "",
+      amountLocal: Number(input.data.amount) || 0,
+      amountUSD: result?.usdCredit || usd,
+      currencyLocal: method.currency,
+      paymentMethod: method.title,
+      methodTitle: method.title,
+      methodKind: method.kind,
+      amount: Number(input.data.amount) || 0,
+      currency: method.currency,
+      usdCredit: result?.usdCredit || usd,
+      payerName: input.data.payerName,
+      reference: input.data.reference,
+      utrNumber: input.data.reference,
+      note: input.data.note || null,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    });
+    if (!result) result = { id: stableDepositId(ref.id), usdCredit: usd };
+  } catch {
+    /* saved on this phone when the cloud write is blocked */
+  }
+  if (!result) throw new Error("Could not save the deposit. Check the name and UTR, then try again.");
   return result;
 }
 

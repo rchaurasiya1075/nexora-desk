@@ -336,7 +336,8 @@ export function watchDeposits(
 ) {
   let stop = () => undefined as void;
   let dead = false;
-  void readerDb()
+  const source = firebaseAuth.currentUser ? Promise.resolve(db) : readerDb();
+  void source
     .then((database) => {
       if (dead) return;
       stop = onSnapshot(
