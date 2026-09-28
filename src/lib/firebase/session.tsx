@@ -25,11 +25,13 @@ import { ensureAuthPersistence, firebaseAuth } from "./client";
 import { ensureTraderProfile } from "./desk";
 import { watchWallet } from "@/lib/ops/balance-adjust";
 import { profileFromDesk, publishProfiles } from "@/lib/ops/directory";
+import { loadPrefs, savePrefs } from "@/lib/profile/prefs";
 import { firebaseMessage, isAuthNotConfigured } from "./errors";
 import { setAuthMode } from "@/lib/desk/auth-mode";
 import {
   getSessionUser,
   localLogin,
+  localRegister,
   localSignOut,
   localChangePassword,
   renameLocalUser,
@@ -52,7 +54,7 @@ type SessionState = {
 
 const Ctx = createContext<
   SessionState & {
-    signUpEmail: (email: string, password: string, name?: string) => Promise<void>;
+    signUpEmail: (email: string, password: string, name?: string, phone?: string) => Promise<void>;
     signInEmail: (email: string, password: string) => Promise<void>;
     signInGoogle: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
@@ -144,24 +146,31 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUpEmail = useCallback(
-    async (email: string, password: string, name?: string) => {
+    async (email: string, password: string, name?: string, phone?: string) => {
       setError(null);
+      const label = (name || email.split("@")[0] || "Trader").trim().slice(0, 40);
+      const mobile = (phone || "").replace(/\s/g, "");
+      const remember = (id: string) => {
+        if (!mobile) return;
+        savePrefs(id, { ...loadPrefs(id), phone: mobile });
+      };
       try {
         await ensureAuthPersistence();
-        const cred = await createUserWithEmailAndPassword(
-          firebaseAuth,
-          email.trim(),
-          password,
-        );
-        const label = (name || email.split("@")[0] || "Trader").slice(0, 40);
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
         await updateProfile(cred.user, { displayName: label });
         await ensureTraderProfile(cred.user);
+        remember(cred.user.uid);
         setAuthMode("firebase");
         setLocal(false);
       } catch (err) {
-        const message = firebaseMessage(err);
-        setError(message);
-        throw new Error(message);
+        if (!isAuthNotConfigured(err)) {
+          const message = firebaseMessage(err);
+          setError(message);
+          throw new Error(message);
+        }
+        const paper = await localRegister(email, password, label);
+        remember(paper.id);
+        adoptLocal(paper);
       }
     },
     [adoptLocal],
@@ -188,11 +197,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
           adoptLocal(paper);
           return;
         } catch (localErr) {
-          const message = isAuthNotConfigured(err)
-            ? firebaseMessage(err)
-            : localErr instanceof Error
-              ? localErr.message
-              : firebaseMessage(err);
+          const message = localErr instanceof Error ? localErr.message : firebaseMessage(err);
           setError(message);
           throw new Error(message);
         }

@@ -39,8 +39,11 @@ export function LoginForm({
   const router = useRouter();
   const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useDeskSession();
   const [mode, setMode] = useState<"in" | "up" | "reset">("in");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -62,8 +65,12 @@ export function LoginForm({
         return;
       }
       if (mode === "up") {
+        if (name.trim().length < 2) throw new Error("Enter your full name.");
+        if (!/^\d{10}$/.test(phone.replace(/\s/g, ""))) throw new Error("Enter a 10-digit mobile number.");
         if (!email.includes("@")) throw new Error("Use a Gmail address to create an account.");
-        await signUpEmail(email, password, email.split("@")[0] || "Trader");
+        if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+        if (password !== confirm) throw new Error("Password and confirm password do not match.");
+        await signUpEmail(email, password, name.trim(), phone.replace(/\s/g, ""));
       } else {
         await signInEmail(email, password);
       }
@@ -103,6 +110,18 @@ export function LoginForm({
         </>
       )}
       <form onSubmit={onEmail} className="space-y-3">
+        {mode === "up" && (
+          <>
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] text-muted">Full name</span>
+              <Input required value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] text-muted">Mobile number</span>
+              <Input required inputMode="numeric" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit mobile" />
+            </label>
+          </>
+        )}
         <label className="block">
           <span className="mb-1.5 block text-[12px] text-muted">
             {admin ? "Admin user id" : mode === "up" ? "Gmail" : "Gmail or user id"}
@@ -127,6 +146,12 @@ export function LoginForm({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+          </label>
+        )}
+        {mode === "up" && (
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] text-muted">Confirm password</span>
+            <Input type="password" autoComplete="new-password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </label>
         )}
         {notice && <p className="text-sm text-buy">{notice}</p>}
