@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { localChangePassword } from "@/lib/desk/local-store";
 import { useDeskSession } from "@/lib/firebase/session";
 import { useMarketTick } from "@/lib/market/use-market";
 import { listMyDeposits } from "@/lib/ops/api";
@@ -41,7 +40,7 @@ const NAV: { id: Section; label: string }[] = [
 
 export function ProfileDesk() {
   useMarketTick();
-  const { user, local, resetPassword, signOutDesk } = useDeskSession();
+  const { user, local, resetPassword, changeDeskPassword, renameDesk, signOutDesk } = useDeskSession();
   const balance = useTradeStore((s) => s.balance);
   const positions = useTradeStore((s) => s.positions);
   const history = useTradeStore((s) => s.history);
@@ -140,6 +139,14 @@ export function ProfileDesk() {
             <p className="text-xs uppercase tracking-[0.18em] text-subtle">Trader profile</p>
             <h1 className="mt-1 font-display text-4xl">{user.name || "Trader"}</h1>
             <p className="mt-1 text-sm text-muted">{user.email}</p>
+            <div className="mt-3 flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setSection("security")}>
+                Edit profile
+              </Button>
+              <Button type="button" variant="outline" onClick={() => void signOutDesk()}>
+                Log out
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -223,9 +230,12 @@ export function ProfileDesk() {
         <Security
           prefs={prefs}
           email={user.email}
+          name={user.name}
           local={local}
           onChange={update}
           onReset={() => resetPassword(user.email)}
+          onPassword={changeDeskPassword}
+          onRename={renameDesk}
           onSignOut={() => void signOutDesk()}
         />
       )}
@@ -524,20 +534,28 @@ function Kyc({ prefs, onChange }: { prefs: ProfilePrefs; onChange: (next: Profil
 function Security({
   prefs,
   email,
+  name,
   local,
   onChange,
   onReset,
+  onPassword,
+  onRename,
   onSignOut,
 }: {
   prefs: ProfilePrefs;
   email: string;
+  name: string;
   local: boolean;
   onChange: (next: ProfilePrefs) => void;
   onReset: () => Promise<void>;
+  onPassword: (current: string, next: string) => Promise<void>;
+  onRename: (name: string) => Promise<void>;
   onSignOut: () => void;
 }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
+  const [display, setDisplay] = useState(name);
+  const [phone, setPhone] = useState(prefs.phone);
   const device = typeof navigator === "undefined" ? "This browser" : navigator.userAgent.slice(0, 72);
 
   return (
@@ -546,33 +564,57 @@ function Security({
         className="rounded-xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]"
         onSubmit={(e) => {
           e.preventDefault();
-          if (local) {
-            void localChangePassword(current, next)
-              .then(() => {
-                setCurrent("");
-                setNext("");
-                toast.success("Password updated.");
-              })
-              .catch((err) => toast.error(err instanceof Error ? err.message : "Could not change password."));
-            return;
-          }
-          void onReset()
-            .then(() => toast.success("Password reset email sent."))
-            .catch((err) => toast.error(err instanceof Error ? err.message : "Reset failed."));
+          void onRename(display)
+            .then(() => {
+              onChange({ ...prefs, phone: phone.trim() });
+              toast.success("Profile saved.");
+            })
+            .catch((err) => toast.error(err instanceof Error ? err.message : "Could not save the profile."));
+        }}
+      >
+        <h2 className="font-display text-2xl">Edit profile</h2>
+        <div className="mt-3 grid gap-2">
+          <Input value={display} placeholder="Your name" onChange={(e) => setDisplay(e.target.value)} />
+          <Input value={email} readOnly />
+          <Input value={phone} placeholder="Mobile number" onChange={(e) => setPhone(e.target.value)} />
+          <Button type="submit">Save profile</Button>
+        </div>
+      </form>
+      <form
+        className="rounded-xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void onPassword(current, next)
+            .then(() => {
+              setCurrent("");
+              setNext("");
+              toast.success("Password updated.");
+            })
+            .catch((err) => toast.error(err instanceof Error ? err.message : "Could not change password."));
         }}
       >
         <h2 className="font-display text-2xl">Password</h2>
-        {local ? (
-          <div className="mt-3 grid gap-2">
-            <Input type="password" placeholder="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-            <Input type="password" placeholder="New password" value={next} onChange={(e) => setNext(e.target.value)} />
-            <Button type="submit" variant="outline">Change password</Button>
-          </div>
-        ) : (
-          <Button className="mt-3" type="submit" variant="outline">
-            Email a reset link to {email}
-          </Button>
+        <div className="mt-3 grid gap-2">
+          <Input type="password" placeholder="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <Input type="password" placeholder="New password" value={next} onChange={(e) => setNext(e.target.value)} />
+          <Button type="submit" variant="outline">Change password</Button>
+        </div>
+        {!local && (
+          <button
+            className="mt-3 text-sm text-muted underline"
+            type="button"
+            onClick={() => {
+              void onReset()
+                .then(() => toast.success("Password reset email sent."))
+                .catch((err) => toast.error(err instanceof Error ? err.message : "Reset failed."));
+            }}
+          >
+            Email a reset link
+          </button>
         )}
+        <Button className="mt-4" type="button" onClick={onSignOut}>
+          Log out
+        </Button>
         <label className="mt-6 flex items-center justify-between gap-3 text-sm">
           <span>2FA preference (saved on this device, not a live SMS OTP)</span>
           <input

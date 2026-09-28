@@ -336,6 +336,16 @@ export async function localChangePassword(current: string, next: string) {
   });
 }
 
+export function renameLocalUser(name: string) {
+  const user = getSessionUser();
+  if (!user) throw new Error("Sign in first.");
+  const clean = name.trim().slice(0, 40);
+  if (clean.length < 2) throw new Error("Enter your name.");
+  mutateDesk((desk) => {
+    const row = desk.users.find((u) => u.id === user.id);
+    if (row) row.name = clean;
+  });
+}
 export function localSignOut() {
   setSessionUserId(null);
 }

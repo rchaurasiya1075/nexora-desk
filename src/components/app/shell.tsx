@@ -7,6 +7,7 @@ import { settleQuick } from "@/lib/trading/quick";
 import { useTradeStore } from "@/lib/trading/store";
 import { Logo } from "@/components/layout/site-header";
 import { CurrencyToggle } from "@/lib/money/display-ccy";
+import { useDeskSession } from "@/lib/firebase/session";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -23,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     select: (s) => (s.location.search as { view?: string }).view,
   });
   const openCount = useTradeStore((s) => s.positions.length);
+  const { user, signOutDesk } = useDeskSession();
 
   useEffect(() => {
     market.start();
@@ -70,6 +72,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        {user && (
+          <button type="button" className="mt-auto px-3 text-left text-sm text-muted hover:text-fg" onClick={() => void signOutDesk()}>
+            Log out
+          </button>
+        )}
       </aside>
 
       {pathname !== "/" && (

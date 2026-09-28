@@ -14,6 +14,9 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
   GoogleAuthProvider,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
   signOut as fbSignOut,
   updateProfile,
   type User,
@@ -28,6 +31,8 @@ import {
   getSessionUser,
   localLogin,
   localSignOut,
+  localChangePassword,
+  renameLocalUser,
   type LocalUser,
 } from "@/lib/desk/local-store";
 
@@ -51,6 +56,8 @@ const Ctx = createContext<
     signInEmail: (email: string, password: string) => Promise<void>;
     signInGoogle: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
+    changeDeskPassword: (current: string, next: string) => Promise<void>;
+    renameDesk: (name: string) => Promise<void>;
     signOutDesk: () => Promise<void>;
   }
 >({
@@ -62,6 +69,8 @@ const Ctx = createContext<
   signInEmail: async () => undefined,
   signInGoogle: async () => undefined,
   resetPassword: async () => undefined,
+  changeDeskPassword: async () => undefined,
+  renameDesk: async () => undefined,
   signOutDesk: async () => undefined,
 });
 
@@ -235,6 +244,47 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const changeDeskPassword = useCallback(async (current: string, nextPw: string) => {
+    if (nextPw.length < 6) throw new Error("Password must be at least 6 characters.");
+    if (local) {
+      await localChangePassword(current, nextPw);
+      return;
+    }
+    const person = firebaseAuth.currentUser;
+    if (!person?.email) throw new Error("Sign in again, then change the password.");
+    try {
+      const cred = EmailAuthProvider.credential(person.email, current);
+      await reauthenticateWithCredential(person, cred);
+      await updatePassword(person, nextPw);
+    } catch (err) {
+      const code = err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        throw new Error("Current password is wrong.");
+      }
+      if (code === "auth/operation-not-allowed") {
+        throw new Error("This login uses Google. Password change needs Email/Password turned on in Firebase.");
+      }
+      throw new Error(firebaseMessage(err));
+    }
+  }, [local]);
+
+  const renameDesk = useCallback(
+    async (name: string) => {
+      const clean = name.trim().slice(0, 40);
+      if (clean.length < 2) throw new Error("Enter your name.");
+      if (local) {
+        renameLocalUser(clean);
+        setUser((row) => (row ? { ...row, name: clean } : row));
+        return;
+      }
+      const person = firebaseAuth.currentUser;
+      if (!person) throw new Error("Sign in again.");
+      await updateProfile(person, { displayName: clean });
+      setUser((row) => (row ? { ...row, name: clean } : row));
+    },
+    [local],
+  );
+
   const signOutDesk = useCallback(async () => {
     localSignOut();
     setLocal(false);
@@ -256,9 +306,11 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       signInEmail,
       signInGoogle,
       resetPassword,
+      changeDeskPassword,
+      renameDesk,
       signOutDesk,
     }),
-    [user, isPending, error, local, signUpEmail, signInEmail, signInGoogle, resetPassword, signOutDesk],
+    [user, isPending, error, local, signUpEmail, signInEmail, signInGoogle, resetPassword, changeDeskPassword, renameDesk, signOutDesk],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
