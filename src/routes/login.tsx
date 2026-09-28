@@ -21,7 +21,7 @@ export function LoginPage() {
         <Logo />
         <h1 className="mt-8 font-display text-4xl">Sign in or create an account</h1>
         <p className="mt-3 text-sm text-muted">
-          Google, or Gmail with a password. A new account asks for your name, mobile, and password. It starts at $0.
+          New accounts confirm the Gmail, then pick a user id and password. Sign in later with that user id. Balance starts at $0.
         </p>
         <div className="mt-8">
           <LoginForm callbackURL="/trade" />

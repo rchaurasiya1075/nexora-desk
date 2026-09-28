@@ -55,6 +55,8 @@ type SessionState = {
 const Ctx = createContext<
   SessionState & {
     signUpEmail: (email: string, password: string, name?: string, phone?: string) => Promise<void>;
+    verifyGmail: (email: string) => Promise<void>;
+    registerLocalAccount: (input: { email: string; password: string; name: string; phone?: string; username: string }) => Promise<void>;
     signInEmail: (email: string, password: string) => Promise<void>;
     signInGoogle: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
@@ -68,6 +70,8 @@ const Ctx = createContext<
   error: null,
   local: false,
   signUpEmail: async () => undefined,
+  verifyGmail: async () => undefined,
+  registerLocalAccount: async () => undefined,
   signInEmail: async () => undefined,
   signInGoogle: async () => undefined,
   resetPassword: async () => undefined,
@@ -75,6 +79,8 @@ const Ctx = createContext<
   renameDesk: async () => undefined,
   signOutDesk: async () => undefined,
 });
+
+let holdAuth = false;
 
 function toUser(u: User): DeskSessionUser {
   return {
@@ -99,6 +105,10 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     let unsub = () => undefined as void;
     void ensureAuthPersistence().then(() => {
       unsub = onAuthStateChanged(firebaseAuth, (next) => {
+        if (holdAuth) {
+          setPending(false);
+          return;
+        }
         if (next) {
           setAuthMode("firebase");
           setLocal(false);
@@ -172,6 +182,47 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         remember(paper.id);
         adoptLocal(paper);
       }
+    },
+    [adoptLocal],
+  );
+
+  const verifyGmail = useCallback(async (email: string) => {
+    const expected = email.trim().toLowerCase();
+    if (!expected.includes("@")) throw new Error("Enter the Gmail address first.");
+    holdAuth = true;
+    setError(null);
+    try {
+      await ensureAuthPersistence();
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ login_hint: expected, prompt: "select_account" });
+      const cred = await signInWithPopup(firebaseAuth, provider);
+      const got = (cred.user.email || "").toLowerCase();
+      await fbSignOut(firebaseAuth);
+      if (got !== expected) throw new Error("Choose the same Gmail you typed.");
+    } catch (err) {
+      try {
+        await fbSignOut(firebaseAuth);
+      } catch {
+        /* already signed out */
+      }
+      const code = err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        throw new Error("Gmail check was closed.");
+      }
+      if (err instanceof Error && err.message === "Choose the same Gmail you typed.") throw err;
+      throw new Error(firebaseMessage(err));
+    } finally {
+      holdAuth = false;
+    }
+  }, []);
+
+  const registerLocalAccount = useCallback(
+    async (input: { email: string; password: string; name: string; phone?: string; username: string }) => {
+      setError(null);
+      const paper = await localRegister(input.email, input.password, input.name, input.username);
+      const mobile = (input.phone || "").replace(/\s/g, "");
+      if (mobile) savePrefs(paper.id, { ...loadPrefs(paper.id), phone: mobile });
+      adoptLocal(paper);
     },
     [adoptLocal],
   );
@@ -308,6 +359,8 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       error,
       local,
       signUpEmail,
+      verifyGmail,
+      registerLocalAccount,
       signInEmail,
       signInGoogle,
       resetPassword,
@@ -315,7 +368,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       renameDesk,
       signOutDesk,
     }),
-    [user, isPending, error, local, signUpEmail, signInEmail, signInGoogle, resetPassword, changeDeskPassword, renameDesk, signOutDesk],
+    [user, isPending, error, local, signUpEmail, verifyGmail, registerLocalAccount, signInEmail, signInGoogle, resetPassword, changeDeskPassword, renameDesk, signOutDesk],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

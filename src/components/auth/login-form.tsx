@@ -37,11 +37,13 @@ export function LoginForm({
   admin?: boolean;
 }) {
   const router = useRouter();
-  const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useDeskSession();
+  const { signInEmail, signInGoogle, resetPassword, verifyGmail, registerLocalAccount } = useDeskSession();
   const [mode, setMode] = useState<"in" | "up" | "reset">("in");
+  const [step, setStep] = useState<"details" | "access">("details");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -65,12 +67,25 @@ export function LoginForm({
         return;
       }
       if (mode === "up") {
-        if (name.trim().length < 2) throw new Error("Enter your full name.");
-        if (!/^\d{10}$/.test(phone.replace(/\s/g, ""))) throw new Error("Enter a 10-digit mobile number.");
-        if (!email.includes("@")) throw new Error("Use a Gmail address to create an account.");
+        if (step === "details") {
+          if (name.trim().length < 2) throw new Error("Enter your full name.");
+          if (!/^\d{10}$/.test(phone.replace(/\s/g, ""))) throw new Error("Enter a 10-digit mobile number.");
+          if (!email.toLowerCase().endsWith("@gmail.com")) throw new Error("Use a Gmail address.");
+          await verifyGmail(email);
+          setStep("access");
+          setNotice("Gmail verified. Now choose the user id and password you will use to sign in.");
+          return;
+        }
+        if (!/^[a-zA-Z0-9._]{4,20}$/.test(userId.trim())) throw new Error("User id must be 4 to 20 letters or numbers.");
         if (password.length < 6) throw new Error("Password must be at least 6 characters.");
         if (password !== confirm) throw new Error("Password and confirm password do not match.");
-        await signUpEmail(email, password, name.trim(), phone.replace(/\s/g, ""));
+        await registerLocalAccount({
+          email,
+          password,
+          name: name.trim(),
+          phone: phone.replace(/\s/g, ""),
+          username: userId.trim().toLowerCase(),
+        });
       } else {
         await signInEmail(email, password);
       }
@@ -101,20 +116,20 @@ export function LoginForm({
 
   return (
     <div className="w-full max-w-sm space-y-4">
-      {!admin && mode !== "reset" && (
+      {!admin && mode === "in" && (
         <>
           <Button type="button" className="w-full" disabled={pending} onClick={() => void onGoogle()}>
             {pending ? "Opening Google…" : "Continue with Google"}
           </Button>
-          <p className="text-center text-[11px] uppercase tracking-wide text-subtle">or Gmail</p>
+          <p className="text-center text-[11px] uppercase tracking-wide text-subtle">or user id</p>
         </>
       )}
       <form onSubmit={onEmail} className="space-y-3">
-        {mode === "up" && (
+        {mode === "up" && step === "details" && (
           <>
             <label className="block">
               <span className="mb-1.5 block text-[12px] text-muted">Full name</span>
-              <Input required value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+              <Input required value={name} autoComplete="name" onChange={(e) => setName(e.target.value)} placeholder="Your legal name" />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-[12px] text-muted">Mobile number</span>
@@ -122,20 +137,27 @@ export function LoginForm({
             </label>
           </>
         )}
-        <label className="block">
-          <span className="mb-1.5 block text-[12px] text-muted">
-            {admin ? "Admin user id" : mode === "up" ? "Gmail" : "Gmail or user id"}
-          </span>
-          <Input
-            type={mode === "up" || mode === "reset" ? "email" : "text"}
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={admin ? "yuvraj1075" : "you@gmail.com"}
-          />
-        </label>
-        {mode !== "reset" && (
+        {mode === "up" && step === "access" ? (
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] text-muted">User id</span>
+            <Input required value={userId} autoComplete="username" onChange={(e) => setUserId(e.target.value)} placeholder="Choose a user id" />
+          </label>
+        ) : (
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] text-muted">
+              {admin ? "Admin user id" : mode === "up" ? "Gmail" : "User id or Gmail"}
+            </span>
+            <Input
+              type={mode === "up" || mode === "reset" ? "email" : "text"}
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={admin ? "yuvraj1075" : "you@gmail.com"}
+            />
+          </label>
+        )}
+        {(mode === "in" || (mode === "up" && step === "access")) && (
           <label className="block">
             <span className="mb-1.5 block text-[12px] text-muted">Password</span>
             <Input
@@ -148,11 +170,14 @@ export function LoginForm({
             />
           </label>
         )}
-        {mode === "up" && (
+        {mode === "up" && step === "access" && (
           <label className="block">
             <span className="mb-1.5 block text-[12px] text-muted">Confirm password</span>
             <Input type="password" autoComplete="new-password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </label>
+        )}
+        {mode === "up" && step === "details" && (
+          <p className="text-xs text-muted">Next, Google confirms this Gmail. Email codes are off in Firebase, so this check is the Gmail proof. Then you set a user id and password.</p>
         )}
         {notice && <p className="text-sm text-buy">{notice}</p>}
         {error && <p className="text-sm text-sell">{error}</p>}
@@ -162,7 +187,9 @@ export function LoginForm({
             : mode === "reset"
               ? "Send reset email"
               : mode === "up"
-                ? "Create account"
+                ? step === "details"
+                  ? "Verify Gmail"
+                  : "Create account"
                 : "Sign in"}
         </Button>
       </form>
@@ -186,12 +213,13 @@ export function LoginForm({
             className="hover:text-fg"
             onClick={() => {
               setMode((m) => (m === "up" ? "in" : m === "reset" ? "in" : "up"));
+              setStep("details");
               setError(null);
               setNotice(null);
             }}
           >
             {mode === "in"
-              ? "New here? Create a Gmail account"
+              ? "New here? Create an account"
               : mode === "up"
                 ? "Already registered? Sign in"
                 : "Back to sign in"}

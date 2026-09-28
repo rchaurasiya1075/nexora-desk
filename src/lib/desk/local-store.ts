@@ -276,9 +276,13 @@ export async function localRegister(
   email: string,
   password: string,
   name?: string,
+  username?: string,
 ): Promise<LocalUser> {
   const em = email.trim().toLowerCase();
   if (!em.includes("@")) throw new Error("Enter a valid email.");
+  const rawName = (username || em.split("@")[0] || "user").replace(/[^a-z0-9._]/g, "");
+  const userName = rawName.slice(0, 20);
+  if (!/^[a-z0-9._]{4,20}$/.test(userName)) throw new Error("User id must be 4 to 20 letters or numbers.");
   if (password.length < 6) throw new Error("Password must be at least 6 characters.");
   const hash = await hashPassword(password);
   const label = (name || em.split("@")[0] || "Trader").slice(0, 40);
@@ -286,6 +290,7 @@ export async function localRegister(
     id: uid("u"),
     name: label,
     email: em,
+    username: userName,
     passwordHash: hash,
     createdAt: new Date().toISOString(),
     lastLogin: new Date().toISOString(),
@@ -293,7 +298,7 @@ export async function localRegister(
   mutateDesk((desk) => {
     if (
       desk.users.some(
-        (u) => u.email === em || u.username === em || em === ADMIN_USER,
+        (u) => u.email === em || u.username === userName || u.username === em || em === ADMIN_USER || userName === ADMIN_USER,
       )
     ) {
       throw new Error("That email is already registered.");
