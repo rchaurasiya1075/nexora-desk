@@ -12,6 +12,7 @@ export type QuickBet = {
   payout: number;
   entry: number;
   expiry: number;
+  openedAt?: number;
   status: "open" | "win" | "loss" | "tie";
   settle: number | null;
   result: number;
@@ -85,6 +86,7 @@ export function openQuickBet(input: { symbol: string; side: QuickSide; stake: nu
     stake: Number(input.stake.toFixed(2)),
     payout: payoutRate(input.seconds),
     entry: quote.mid,
+    openedAt: Date.now(),
     expiry: Date.now() + input.seconds * 1000,
     status: "open",
     settle: null,

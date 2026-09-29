@@ -19,6 +19,13 @@ const TIMES = [
   { id: 240, label: "240s" },
 ];
 
+function clock(total: number) {
+  const safe = Math.max(0, total);
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `00:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function QuickScreen() {
   useMarketTick();
   const { user } = useDeskSession();
@@ -86,9 +93,16 @@ export function QuickScreen() {
   const winning = live ? (live.side === "call" ? gap > 0 : gap < 0) : false;
   const left = live ? Math.max(0, Math.ceil((live.expiry - now) / 1000)) : 0;
 
+  function stepTime(dir: -1 | 1) {
+    const allowed = TIMES.filter((item) => item.id <= cap);
+    const index = Math.max(0, allowed.findIndex((item) => item.id === seconds));
+    const next = allowed[Math.min(allowed.length - 1, Math.max(0, index + dir))];
+    if (next) setSeconds(next.id);
+  }
+
   function go(side: QuickSide) {
     if (live) {
-      toast.error("Wait for the open intraday trade to finish.");
+      toast.error("Wait for the open binary trade to finish.");
       return;
     }
     const res = openQuickBet({ symbol: selected, side, stake, seconds });
@@ -124,34 +138,37 @@ export function QuickScreen() {
           {live.side === "call" ? "Buy" : "Sell"} at {formatPrice(live.entry, inst.digits)} · {flat ? "at entry" : winning ? "in profit" : "in loss"} · {left}s
         </p>
       )}
-      <div className="relative mt-2 min-h-[280px] flex-1 overflow-hidden border border-[#eceff3] bg-white">
-        <QuickLiveChart symbol={focus} entry={live?.entry} secondsLeft={live ? left : null} />
+      <div className="relative mt-2 min-h-[320px] flex-1 overflow-hidden bg-[#0c1424]">
+        <QuickLiveChart symbol={focus} entry={live?.entry} openedAt={live?.openedAt ?? (live ? live.expiry - seconds * 1000 : null)} expiry={live?.expiry} />
       </div>
       </div>
       <div className="lg:flex lg:w-[340px] lg:shrink-0 lg:flex-col lg:justify-center lg:rounded-2xl lg:border lg:border-border lg:p-4">
-      <div className="mt-2 flex gap-1.5">
-        {TIMES.filter((item) => item.id <= cap).map((item) => (
-          <button key={item.id} type="button" disabled={!!live} onClick={() => setSeconds(item.id)} className={`h-8 flex-1 rounded-full text-xs disabled:opacity-40 ${seconds === item.id ? "bg-fg text-bg" : "bg-bg-subtle text-muted"}`}>
-            {item.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <button type="button" disabled={!!live} onClick={() => go("put")} className="h-14 rounded-xl bg-[#e23b3b] text-sm font-semibold text-white disabled:opacity-40">
-          Sell
-          <span className="mt-0.5 block text-base">{formatPrice(quote.bid, inst.digits)}</span>
-        </button>
-        <div className="flex h-14 items-center gap-1 rounded-xl border border-[#e6e8ee] px-2">
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="flex h-12 items-center justify-between rounded-xl bg-[#1c2433] px-2 text-white">
           <button type="button" className="size-8 text-lg" disabled={!!live} onClick={() => setAmount(String(Math.max(step, (Number(amount) || 0) - step)))}>−</button>
-          <div className="w-16 text-center">
-            <p className="text-[10px] text-muted">Volume</p>
-            <input value={amount} inputMode="decimal" disabled={!!live} onChange={(e) => setAmount(e.target.value)} className="w-full bg-transparent text-center text-sm font-medium outline-none" />
+          <div className="text-center">
+            <p className="text-sm font-medium">{ccy === "INR" ? "₹" : "$"}{amount}</p>
+            <p className="text-[10px] text-white/50">investment</p>
           </div>
           <button type="button" className="size-8 text-lg" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
         </div>
-        <button type="button" disabled={!!live} onClick={() => go("call")} className="h-14 rounded-xl bg-[#1f9d55] text-sm font-semibold text-white disabled:opacity-40">
-          Buy
-          <span className="mt-0.5 block text-base">{formatPrice(quote.ask, inst.digits)}</span>
+        <div className="flex h-12 items-center justify-between rounded-xl bg-[#1c2433] px-2 text-white">
+          <button type="button" className="size-8" disabled={!!live} onClick={() => stepTime(-1)}>‹</button>
+          <div className="text-center">
+            <p className="text-sm font-medium">{clock(live ? left : seconds)}</p>
+            <p className="text-[10px] text-white/50">auto close</p>
+          </div>
+          <button type="button" className="size-8" disabled={!!live} onClick={() => stepTime(1)}>›</button>
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 overflow-hidden rounded-xl">
+        <button type="button" disabled={!!live} onClick={() => go("put")} className="flex h-16 items-center justify-center gap-3 bg-[#3a2430] text-white disabled:opacity-40">
+          <span className="text-2xl text-[#ff5a6a]">▼</span>
+          <span className="text-left text-sm font-semibold leading-tight">SELL<br />{Math.round(rateBack * 100)}%</span>
+        </button>
+        <button type="button" disabled={!!live} onClick={() => go("call")} className="flex h-16 items-center justify-center gap-3 bg-[#16352c] text-white disabled:opacity-40">
+          <span className="text-left text-sm font-semibold leading-tight">BUY<br />{Math.round(rateBack * 100)}%</span>
+          <span className="text-2xl text-[#2ee59d]">▲</span>
         </button>
       </div>
       <p className="mt-1 text-center text-xs text-muted">{live ? "Trade is on the chart. Stake stays locked until it settles." : `Stake ${showMoney(stake, ccy)} · if win ${showMoney(back, ccy)}`}</p>
