@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/firebase/gates";
 import { watchDeposits } from "@/lib/firebase/desk";
 import { balanceOverride, rememberBalance } from "@/lib/ops/balance-adjust";
-import { applyReviews, readReviews, settleDeposit, subscribeReviews, watchDepositReviews } from "@/lib/ops/deposit-review";
+import { applyReviews, ensureDepositCredit, readReviews, settleDeposit, subscribeReviews, watchDepositReviews } from "@/lib/ops/deposit-review";
 import type { DepositStatus } from "@/lib/ops/types";
 import { useDeskSession } from "@/lib/firebase/session";
 import { INSTRUMENTS } from "@/lib/market/instruments";
@@ -184,7 +184,20 @@ export function AdminConsole() {
         setUserNote(firestoreDirectoryError() || directoryError());
       })
       .catch(() => setUserNote("User list failed to load."));
-    void listAllDeposits().then(setDeposits).catch(() => setDeposits([]));
+    void listAllDeposits()
+      .then((rows) => {
+        setDeposits(rows);
+        const reviews = readReviews();
+        const recent = Date.now() - 2 * 24 * 3600 * 1000;
+        for (const row of rows) {
+          const key = row.docId || String(row.id);
+          const status = reviews[key] || reviews[String(row.id)] || row.status;
+          const at = Date.parse(row.createdAt || "");
+          if (status !== "approved" || !Number.isFinite(at) || at < recent) continue;
+          void ensureDepositCredit(row.userId, key, row.usdCredit).catch(() => undefined);
+        }
+      })
+      .catch(() => setDeposits([]));
   }, [tick]);
 
   const control = readControl();
@@ -200,7 +213,7 @@ export function AdminConsole() {
   const todaysTrades = closed.filter((t) => new Date(t.closedAt).toISOString().slice(0, 10) === today).length + open.length;
 
   return (
-    <div className="flex min-h-dvh bg-[#07080a] text-fg">
+    <div className="theme-dark flex min-h-dvh bg-[#0e1116] text-[#f4f5f7]">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-white/10 bg-black/40 md:flex">
         <div className="border-b border-white/10 px-4 py-5">
           <p className="text-lg font-bold uppercase tracking-[0.12em]">MORGAN MAX</p>
@@ -252,7 +265,7 @@ export function AdminConsole() {
         <main className="flex-1 overflow-auto px-4 py-6">
           {section === "dash" && (
             <div>
-              <h1 className="font-display text-3xl">Dashboard</h1>
+              <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
               <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Card k="Total users" v={String(users.length)} />
                 <Card k="Active users" v={String(active)} />
@@ -316,9 +329,9 @@ export function AdminConsole() {
 
 function Card({ k, v }: { k: string; v: string }) {
   return (
-    <div className="rounded-sm border border-white/10 bg-white/[0.03] px-4 py-3">
-      <p className="text-[11px] uppercase tracking-wide text-muted">{k}</p>
-      <p className="mt-2 font-display text-2xl">{v}</p>
+    <div className="rounded-xl border border-white/15 bg-[#171b22] px-4 py-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[#a8aeb8]">{k}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{v}</p>
     </div>
   );
 }

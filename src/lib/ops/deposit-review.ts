@@ -93,6 +93,38 @@ export function watchDepositReviews(onRows: (reviews: Record<string, DepositStat
   };
 }
 
+async function remoteCreditExists(key: string) {
+  try {
+    const database = firebaseAuth.currentUser ? db : await readerDb();
+    const snap = await getDocs(collection(database, "withdrawals"));
+    let found = false;
+    snap.forEach((row) => {
+      const data = row.data();
+      if (data.kind === "admin-balance" && (data.depositId === key || data.note === `dep:${key}`)) found = true;
+    });
+    return found;
+  } catch {
+    return false;
+  }
+}
+
+const creditFlight = new Set<string>();
+
+export async function ensureDepositCredit(userId: string, key: string, usd: number) {
+  if (!userId || !key || !(usd > 0) || creditFlight.has(key)) return false;
+  creditFlight.add(key);
+  try {
+    if (await remoteCreditExists(key)) return true;
+    const result = await adjustUserBalance(userId, usd, `dep:${key}`, balanceOverride(userId) ?? 0);
+    if (!result.saved) {
+      throw new Error("Credit did not save. In Firestore rules, allow signed-in users to create withdrawals, then approve again.");
+    }
+    return true;
+  } finally {
+    creditFlight.delete(key);
+  }
+}
+
 export async function settleDeposit(input: {
   docId?: string;
   id: number;
@@ -106,12 +138,10 @@ export async function settleDeposit(input: {
   if (input.action === "approve") {
     const usd = Number(input.usdCredit) || 0;
     if (usd <= 0) throw new Error("Credit amount is missing.");
+    await ensureDepositCredit(input.userId, key, usd);
     const paid = readMap(PAID);
-    if (!paid[key]) {
-      await adjustUserBalance(input.userId, usd, input.note || "Deposit approved", balanceOverride(input.userId) ?? undefined);
-      paid[key] = "1";
-      localStorage.setItem(PAID, JSON.stringify(paid));
-    }
+    paid[key] = "1";
+    localStorage.setItem(PAID, JSON.stringify(paid));
   }
   remember(key, status);
   if (input.docId && !/^\d+$/.test(input.docId)) {
@@ -130,6 +160,7 @@ export async function settleDeposit(input: {
         kind: "deposit-review",
         depositId: input.docId,
         userId: input.userId,
+        usd: Number(input.usdCredit) || 0,
         status,
         createdAt: new Date().toISOString(),
       });

@@ -30,7 +30,6 @@ const QUICK: Record<string, number[]> = {
 
 export function DepositDesk({ compact = false }: { compact?: boolean }) {
   const balance = useTradeStore((s) => s.balance);
-  const hydrateFromServer = useTradeStore((s) => s.hydrateFromServer);
   const [currencies, setCurrencies] = useState<CurrencyRow[]>(builtinCurrencies());
   const [methods, setMethods] = useState<PaymentMethod[]>(builtinMethods());
   const [mine, setMine] = useState<DepositRequest[]>([]);
@@ -53,8 +52,6 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
     setMethods(withCrypto(m.length ? m : builtinMethods()));
     setMine(r);
     setMethodId((id) => (id && m.some((x) => x.id === id) ? id : m[0]?.id ?? null));
-    const approved = r.find((row) => row.status === "approved");
-    if (approved) void hydrateFromServer();
   }
 
   useEffect(() => watchPayDesk(setPay), []);
@@ -73,12 +70,11 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
       void listMyDeposits()
         .then((rows) => {
           setMine(rows);
-          if (rows.some((r) => r.status === "approved")) void hydrateFromServer();
         })
         .catch(() => undefined);
     }, 8000);
     return () => clearInterval(t);
-  }, [mine, hydrateFromServer]);
+  }, [mine]);
 
   const method = methods.find((m) => m.id === methodId) ?? null;
   const ccy = currencies.find((c) => c.code === method?.currency);

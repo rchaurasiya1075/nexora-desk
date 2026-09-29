@@ -54,6 +54,7 @@ export async function adjustUserBalance(
       kind: "admin-balance",
       balance: next,
       delta,
+      depositId: note.startsWith("dep:") ? note.slice(4, 80) : null,
       note: note.slice(0, 160),
       createdAt: new Date().toISOString(),
     });
@@ -122,59 +123,41 @@ export function watchWallet(userId: string, onBalance?: (balance: number) => voi
       stop = onSnapshot(
         collection(database, "withdrawals"),
         (snap) => {
-          const docs: { id: string; at: string; balance: number; delta: number }[] = [];
+          const docs: { id: string; at: string; delta: number; depositId: string }[] = [];
           snap.forEach((row) => {
             const data = row.data();
             if (data.userId !== userId || data.kind !== "admin-balance") return;
             docs.push({
               id: row.id,
               at: String(data.createdAt || ""),
-              balance: Number(data.balance),
               delta: Number(data.delta),
+              depositId: String(data.depositId || (String(data.note || "").startsWith("dep:") ? String(data.note).slice(4) : "")),
             });
           });
           if (!docs.length) return;
           docs.sort((a, b) => a.at.localeCompare(b.at));
-          let seen = readSeen(userId);
-          if (!seen) {
-            seen = {};
-            const freshAfter = Date.now() - 20_000;
-            const state = useTradeStore.getState();
-            let applied = false;
+          const seen = readSeen(userId) || {};
+          const state = useTradeStore.getState();
+          const recent = Date.now() - 12 * 60 * 60 * 1000;
+          if (state.balance <= 0 && state.positions.length === 0) {
             for (const row of docs) {
               const at = Date.parse(row.at);
-              if (!seen[row.id] && Number.isFinite(at) && at >= freshAfter && Number.isFinite(row.delta) && row.delta !== 0) {
-                useTradeStore.getState().adjustCash(row.delta);
-                useTradeStore.setState({ cashLock: true });
-                applied = true;
-              }
-              seen[row.id] = true;
+              if (Number.isFinite(at) && at >= recent) delete seen[row.depositId ? `dep:${row.depositId}` : row.id];
             }
-            writeSeen(userId, seen);
-            const latest = docs[docs.length - 1];
-            if (!applied && state.balance === 0 && state.positions.length === 0 && latest && Number.isFinite(latest.balance) && latest.balance > 0) {
-              useTradeStore.setState({ balance: latest.balance, hydrated: true, cashLock: true });
-              rememberBalance(userId, latest.balance);
-            }
-            onBalance?.(useTradeStore.getState().balance);
-            return;
           }
           let changed = false;
           for (const row of docs) {
-            if (seen[row.id] || !Number.isFinite(row.delta) || row.delta === 0) {
-              seen[row.id] = true;
+            const key = row.depositId ? `dep:${row.depositId}` : row.id;
+            if (seen[key] || !Number.isFinite(row.delta) || row.delta === 0) {
+              seen[key] = true;
               continue;
             }
-            seen[row.id] = true;
+            seen[key] = true;
             useTradeStore.getState().adjustCash(row.delta);
-            useTradeStore.setState({ cashLock: true });
             changed = true;
           }
           writeSeen(userId, seen);
-          if (changed) {
-            const latest = docs[docs.length - 1];
-            if (latest && Number.isFinite(latest.balance)) rememberBalance(userId, latest.balance);
-          }
+          if (changed) rememberBalance(userId, useTradeStore.getState().balance);
           onBalance?.(useTradeStore.getState().balance);
         },
         () => undefined,

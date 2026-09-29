@@ -86,7 +86,8 @@
   }
 }
 
-html.theme-dark {
+html.theme-dark,
+.theme-dark {
   --color-bg: #0b0c0f;
   --color-bg-elevated: #14161c;
   --color-bg-subtle: #1c1f27;

@@ -84,7 +84,6 @@ export function ProfileDesk() {
           }
           return [...map.values()];
         });
-        if (mine.some((row) => row.status === "approved")) void hydrateFromServer();
       },
       () => undefined,
     );
