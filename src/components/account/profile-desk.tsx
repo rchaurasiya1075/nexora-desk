@@ -71,7 +71,7 @@ export function ProfileDesk() {
       exit: bet.settle ?? bet.entry,
       pnl: bet.status === "open" ? 0 : bet.result,
       closedAt: bet.status === "open" ? bet.expiry : bet.expiry,
-      kind: bet.status === "open" ? "Quick · running" : "Quick",
+      kind: bet.status === "open" ? "Intraday · running" : "Intraday",
     }));
     const opts = options.map((bet) => ({
       id: bet.id,

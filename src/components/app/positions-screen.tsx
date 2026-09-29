@@ -121,7 +121,7 @@ export function PositionsScreen() {
           return (
             <li key={bet.id} className="flex items-center justify-between gap-3 py-3 text-sm">
               <span>
-                Quick · {inst.display} {bet.side === "call" ? "Higher" : "Lower"} · {formatPrice(bet.entry, inst.digits)} → {bet.settle != null ? formatPrice(bet.settle, inst.digits) : "—"}
+                Intraday · {inst.display} {bet.side === "call" ? "Buy" : "Sell"} · {formatPrice(bet.entry, inst.digits)} → {bet.settle != null ? formatPrice(bet.settle, inst.digits) : "—"}
               </span>
               <span className={bet.result >= 0 ? "text-buy" : "text-sell"}>
                 {bet.status === "win" ? "Profit" : bet.status === "loss" ? "Loss" : "Tie"} {showFrozen(bet.result, ccy, bet.fx)}

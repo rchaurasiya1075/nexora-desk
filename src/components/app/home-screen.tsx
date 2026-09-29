@@ -83,7 +83,7 @@ export function HomeScreen() {
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Link to="/trade" search={{ desk: "quick" }} className="flex h-9 items-center justify-center rounded-lg bg-accent text-xs font-semibold text-accent-fg">
-            Quick Trade
+            Intraday
           </Link>
           <Link to="/trade" search={{ desk: "swing" }} className="flex h-9 items-center justify-center rounded-lg bg-bg-subtle text-xs font-medium">
             Swing Trade
