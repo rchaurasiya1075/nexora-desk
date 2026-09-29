@@ -54,7 +54,7 @@ export function CurrencyToggle() {
     <button
       type="button"
       onClick={() => setDisplayCcy(ccy === "INR" ? "USD" : "INR")}
-      className="h-8 rounded-full bg-white/10 px-3 text-[11px] font-medium tracking-wide"
+      className="h-8 rounded-full bg-bg-subtle px-3 text-[11px] font-medium tracking-wide"
     >
       {ccy === "INR" ? "₹ INR" : "$ USD"}
     </button>

@@ -127,18 +127,18 @@ export function QuickScreen() {
       </div>
       <div className="mt-2 flex gap-1.5">
         {TIMES.filter((item) => item.id <= cap).map((item) => (
-          <button key={item.id} type="button" disabled={!!live} onClick={() => setSeconds(item.id)} className={`h-8 flex-1 rounded-full text-xs disabled:opacity-40 ${seconds === item.id ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`}>
+          <button key={item.id} type="button" disabled={!!live} onClick={() => setSeconds(item.id)} className={`h-8 flex-1 rounded-full text-xs disabled:opacity-40 ${seconds === item.id ? "bg-fg text-bg" : "bg-bg-subtle text-muted"}`}>
             {item.label}
           </button>
         ))}
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <button type="button" className="h-10 w-10 rounded-full bg-white/10" disabled={!!live} onClick={() => setAmount(String(Math.max(step, (Number(amount) || 0) - step)))}>−</button>
-        <div className="flex h-10 flex-1 items-center justify-center rounded-full bg-white/10">
+        <button type="button" className="h-10 w-10 rounded-full bg-bg-subtle" disabled={!!live} onClick={() => setAmount(String(Math.max(step, (Number(amount) || 0) - step)))}>−</button>
+        <div className="flex h-10 flex-1 items-center justify-center rounded-full bg-bg-subtle">
           <span className="text-muted">{ccy === "INR" ? "₹" : "$"}</span>
           <input value={amount} inputMode="decimal" disabled={!!live} onChange={(e) => setAmount(e.target.value)} className="w-24 bg-transparent text-center outline-none" />
         </div>
-        <button type="button" className="h-10 w-10 rounded-full bg-white/10" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
+        <button type="button" className="h-10 w-10 rounded-full bg-bg-subtle" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
       </div>
       <p className="mt-1 text-center text-xs text-muted">{live ? "This trade is running on the chart. Stake stays locked until it settles." : `If win ${showMoney(back, ccy)} · your balance unlocks ${cap}s`}</p>
       <div className="mt-2 grid grid-cols-2 gap-2">

@@ -18,7 +18,7 @@ export const Route = createRootRoute({
         content:
           "Sign in, request a deposit, and trade forex, gold, crypto, indices and shares on a live demo desk after admin approval.",
       },
-      { name: "theme-color", content: "#09090B" },
+      { name: "theme-color", content: "#ffffff" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -40,7 +40,7 @@ export const Route = createRootRoute({
           </FirebaseAuthProvider>
         </AuthProvider>
         <Toaster
-          theme="dark"
+          theme="light"
           position="bottom-right"
           toastOptions={{
             style: {

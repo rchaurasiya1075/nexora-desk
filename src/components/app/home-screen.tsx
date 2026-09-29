@@ -70,7 +70,7 @@ export function HomeScreen() {
         </div>
       </header>
 
-      <section className="mt-5 rounded-2xl border border-border bg-bg-elevated p-5">
+      <section className="mt-8 rounded-3xl border border-border bg-bg-elevated p-6 shadow-[var(--shadow-border)]">
         <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Main balance</p>
         <p className="mt-1 text-5xl font-medium tracking-tight">{showMoney(balance, ccy)}</p>
         <p className={`mt-2 text-sm font-medium ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
@@ -184,7 +184,7 @@ export function HomeScreen() {
 function StoryBubble({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="flex w-16 flex-col items-center gap-2">
-      <span className="flex size-14 items-center justify-center rounded-full border border-white/15 bg-bg-elevated text-[11px] font-medium">
+      <span className="flex size-16 items-center justify-center rounded-full border border-border bg-bg-subtle text-sm font-medium">
         {label.slice(0, 1)}
       </span>
       <span className="text-[10px] text-muted">{label}</span>
@@ -203,10 +203,10 @@ function PairCard({ inst }: { inst: Instrument }) {
         <p className={up ? "text-xs text-buy" : "text-xs text-sell"}>{formatPct(q.changePct)}</p>
       </Link>
       <div className="mt-3 grid grid-cols-2 gap-1.5">
-        <Link to="/trade" search={{ symbol: inst.symbol, side: "buy" }} className="flex h-9 items-center justify-center rounded-lg bg-white text-[11px] font-semibold text-[#111214]">
+        <Link to="/trade" search={{ symbol: inst.symbol, side: "buy" }} className="flex h-10 items-center justify-center rounded-xl bg-[#00b386] text-xs font-semibold text-white">
           BUY
         </Link>
-        <Link to="/trade" search={{ symbol: inst.symbol, side: "sell" }} className="flex h-9 items-center justify-center rounded-lg border border-white/15 text-[11px] font-semibold text-fg">
+        <Link to="/trade" search={{ symbol: inst.symbol, side: "sell" }} className="flex h-10 items-center justify-center rounded-xl bg-[#eb5b3c] text-xs font-semibold text-white">
           SELL
         </Link>
       </div>

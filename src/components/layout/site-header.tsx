@@ -144,8 +144,8 @@ export function SiteFooter() {
             <Link to="/news" className="text-muted hover:text-fg">
               News & analysis
             </Link>
-            <Link to="/login" className="text-muted hover:text-fg">
-              Sign in
+            <Link to="/account" className="text-muted hover:text-fg">
+              Customer support
             </Link>
             <Link to="/admin/login" className="text-muted hover:text-fg">
               Admin desk

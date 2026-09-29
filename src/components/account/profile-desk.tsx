@@ -657,8 +657,8 @@ function Security({
             value={prefs.theme}
             onChange={(e) => onChange({ ...prefs, theme: e.target.value as "dark" | "light" })}
           >
-            <option value="dark">Dark</option>
             <option value="light">Light</option>
+            <option value="dark">Dark</option>
           </select>
         </label>
         {(["trade", "price", "funding"] as const).map((key) => (

@@ -204,7 +204,7 @@ export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?:
             value={trigger}
             placeholder={kind === "limit" ? "Limit price" : "Stop trigger"}
             onChange={(e) => setTrigger(e.target.value)}
-            className="h-10 w-full rounded-full bg-white/10 px-4 text-center text-sm outline-none"
+            className="h-10 w-full rounded-full bg-bg-subtle px-4 text-center text-sm outline-none"
           />
         )}
         <div className="grid grid-cols-2 gap-2">
@@ -213,21 +213,21 @@ export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?:
             value={sl}
             placeholder="Stop loss"
             onChange={(e) => setSl(e.target.value)}
-            className="h-9 rounded-full bg-white/10 px-3 text-center text-xs outline-none"
+            className="h-9 rounded-full bg-bg-subtle px-3 text-center text-xs outline-none"
           />
           <input
             inputMode="decimal"
             value={tp}
             placeholder="Take profit"
             onChange={(e) => setTp(e.target.value)}
-            className="h-9 rounded-full bg-white/10 px-3 text-center text-xs outline-none"
+            className="h-9 rounded-full bg-bg-subtle px-3 text-center text-xs outline-none"
           />
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String(Math.max(ccy === "INR" ? 500 : 10, (Number(amount) || 0) - (ccy === "INR" ? 1000 : 50))))}>
+          <button type="button" className="h-10 w-10 rounded-full bg-bg-subtle text-lg" onClick={() => setAmount(String(Math.max(ccy === "INR" ? 500 : 10, (Number(amount) || 0) - (ccy === "INR" ? 1000 : 50))))}>
             −
           </button>
-          <div className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-full bg-white/10 px-3">
+          <div className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-full bg-bg-subtle px-3">
             <span className="text-muted">{ccy === "INR" ? "₹" : "$"}</span>
             <input
               inputMode="decimal"
@@ -236,7 +236,7 @@ export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?:
               className="w-24 bg-transparent text-center text-base font-medium outline-none"
             />
           </div>
-          <button type="button" className="h-10 w-10 rounded-full bg-white/10 text-lg" onClick={() => setAmount(String((Number(amount) || 0) + (ccy === "INR" ? 1000 : 50)))}>
+          <button type="button" className="h-10 w-10 rounded-full bg-bg-subtle text-lg" onClick={() => setAmount(String((Number(amount) || 0) + (ccy === "INR" ? 1000 : 50)))}>
             +
           </button>
         </div>
@@ -336,5 +336,5 @@ function lotsFor(inst: ReturnType<typeof getInstrument>, usd: number, price: num
 }
 
 function chip(on: boolean) {
-  return `shrink-0 rounded-full px-2.5 py-1 text-[11px] ${on ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`;
+  return `shrink-0 rounded-full px-2.5 py-1 text-[11px] ${on ? "bg-fg text-bg" : "bg-bg-subtle text-muted"}`;
 }

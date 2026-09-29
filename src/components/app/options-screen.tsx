@@ -55,7 +55,7 @@ export function OptionsScreen() {
       <p className="mt-1 text-sm text-muted">Spot {formatPrice(quote.mid, inst.digits)} · each contract expires in 5 minutes</p>
       <div className="mt-3 flex items-center gap-2">
         <span className="text-muted">{ccy === "INR" ? "₹" : "$"}</span>
-        <input value={amount} inputMode="decimal" onChange={(e) => setAmount(e.target.value)} className="h-10 flex-1 rounded-full bg-white/10 px-3 text-center outline-none" />
+        <input value={amount} inputMode="decimal" onChange={(e) => setAmount(e.target.value)} className="h-10 flex-1 rounded-full bg-bg-subtle px-3 text-center outline-none" />
       </div>
       <ul className="mt-4 space-y-2">
         {chain.map((strike) => (

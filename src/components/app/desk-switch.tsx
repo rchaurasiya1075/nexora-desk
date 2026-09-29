@@ -18,7 +18,7 @@ export function DeskSwitch({ mode }: { mode: DeskMode }) {
           key={item.id}
           to="/trade"
           search={{ desk: item.id }}
-          className={`shrink-0 rounded-full px-3 py-1 text-xs ${mode === item.id ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`}
+          className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs ${mode === item.id ? "bg-fg text-bg" : "bg-bg-subtle text-muted"}`}
         >
           {item.label}
         </Link>

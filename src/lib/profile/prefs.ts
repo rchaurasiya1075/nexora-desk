@@ -45,7 +45,7 @@ const EMPTY: ProfilePrefs = {
   usdt: "",
   twoFa: false,
   currency: "USD",
-  theme: "dark",
+  theme: "light",
   alerts: { trade: true, price: true, funding: true },
 };
 
@@ -59,9 +59,11 @@ export function loadPrefs(userId: string): ProfilePrefs {
     const raw = localStorage.getItem(key(userId));
     if (!raw) return structuredClone(EMPTY);
     const parsed = JSON.parse(raw) as Partial<ProfilePrefs>;
+    const theme = typeof window !== "undefined" && localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
     return {
       ...structuredClone(EMPTY),
       ...parsed,
+      theme,
       alerts: { ...EMPTY.alerts, ...parsed.alerts },
       banks: parsed.banks ?? [],
       upis: parsed.upis ?? [],
@@ -76,21 +78,17 @@ export function savePrefs(userId: string, prefs: ProfilePrefs) {
   applyTheme(prefs.theme);
 }
 
+const THEME_KEY = "morgan.theme";
+
 export function applyTheme(theme: "dark" | "light") {
   if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("theme-light", theme === "light");
+  document.documentElement.classList.toggle("theme-dark", theme === "dark");
+  localStorage.setItem(THEME_KEY, theme);
 }
 
 export function bootTheme() {
   if (typeof window === "undefined") return;
-  try {
-    const hit = Object.keys(localStorage).find((k) => k.startsWith("sikkaaa.profile.v1:"));
-    if (!hit) return;
-    const parsed = JSON.parse(localStorage.getItem(hit) || "") as ProfilePrefs;
-    if (parsed.theme) applyTheme(parsed.theme);
-  } catch {
-    /* ignore */
-  }
+  applyTheme(localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light");
 }
 
 export function maskTail(value: string) {
