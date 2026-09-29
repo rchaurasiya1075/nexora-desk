@@ -1,5 +1,6 @@
 import { getInstrument } from "@/lib/market/instruments";
 import { market } from "@/lib/market/engine";
+import { inrPerUsd } from "@/lib/money/display-ccy";
 import { useTradeStore } from "@/lib/trading/store";
 
 export type QuickSide = "call" | "put";
@@ -13,6 +14,8 @@ export type QuickBet = {
   expiry: number;
   status: "open" | "win" | "loss" | "tie";
   settle: number | null;
+  result: number;
+  fx: number;
   posted: boolean;
 };
 
@@ -28,6 +31,8 @@ function read(): QuickBet[] {
     cache = (Array.isArray(rows) ? rows : []).map((bet) => ({
       ...bet,
       posted: bet.posted ?? bet.status !== "open",
+      result: typeof bet.result === "number" ? bet.result : bet.status === "win" ? bet.stake * bet.payout : bet.status === "loss" ? -bet.stake : 0,
+      fx: bet.fx || 88.42,
     }));
   } catch {
     cache = [];
@@ -73,6 +78,8 @@ export function openQuickBet(input: { symbol: string; side: QuickSide; stake: nu
     expiry: Date.now() + input.seconds * 1000,
     status: "open",
     settle: null,
+    result: 0,
+    fx: inrPerUsd(),
     posted: false,
   };
   state.adjustCash(-bet.stake);
@@ -90,9 +97,17 @@ export function settleQuick() {
     const up = px > bet.entry;
     const down = px < bet.entry;
     bet.settle = px;
-    if (!up && !down) bet.status = "tie";
-    else if ((bet.side === "call" && up) || (bet.side === "put" && down)) bet.status = "win";
-    else bet.status = "loss";
+    bet.fx = bet.fx || inrPerUsd();
+    if (!up && !down) {
+      bet.status = "tie";
+      bet.result = 0;
+    } else if ((bet.side === "call" && up) || (bet.side === "put" && down)) {
+      bet.status = "win";
+      bet.result = Number((bet.stake * bet.payout).toFixed(2));
+    } else {
+      bet.status = "loss";
+      bet.result = Number((-bet.stake).toFixed(2));
+    }
     changed = true;
   }
   if (changed) write(rows);

@@ -42,6 +42,13 @@ export function showMoney(usd: number, ccy: Ccy = readDisplayCcy()) {
   return formatMoney(usd);
 }
 
+export function showFrozen(usd: number, ccy: Ccy = readDisplayCcy(), fx?: number) {
+  const rate = fx && fx > 1 ? fx : 88.42;
+  const value = ccy === "INR" ? usd * rate : usd;
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${formatMoney(Math.abs(value), ccy === "INR" ? "INR" : "USD")}`;
+}
+
 export function showSigned(usd: number, ccy: Ccy = readDisplayCcy()) {
   const value = ccy === "INR" ? usd * inrPerUsd() : usd;
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";

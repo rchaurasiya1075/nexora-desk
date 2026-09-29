@@ -3,7 +3,7 @@ import { market } from "@/lib/market/engine";
 import { getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
 import { positionPnl, useTradeStore } from "@/lib/trading/store";
-import { showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
+import { showFrozen, showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -102,11 +102,13 @@ export function PositionsScreen() {
         {history.slice(0, 20).map((row) => {
           const inst = getInstrument(row.symbol);
           return (
-            <li key={row.id} className="flex items-center justify-between py-3 text-sm">
+            <li key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm">
               <span>
-                {inst.display} {row.side.toUpperCase()}
+                {inst.display} {row.side.toUpperCase()} · {formatPrice(row.entry, inst.digits)} → {formatPrice(row.exit, inst.digits)}
               </span>
-              <span className={row.pnl >= 0 ? "text-buy" : "text-sell"}>{showSigned(row.pnl, ccy)}</span>
+              <span className={row.pnl >= 0 ? "text-buy" : "text-sell"}>
+                {row.pnl >= 0 ? "Profit" : "Loss"} {showFrozen(row.pnl, ccy, row.fx)}
+              </span>
             </li>
           );
         })}

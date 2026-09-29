@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { getInstrument, type Instrument } from "@/lib/market/instruments";
 import { market, type AccountPricing } from "@/lib/market/engine";
+import { inrPerUsd } from "@/lib/money/display-ccy";
 import { loadAccount, saveBook } from "@/lib/trading/account-api";
 import {
   MARGIN_CALL,
@@ -48,6 +49,7 @@ export type HistoryRow = {
   commission: number;
   openedAt: number;
   closedAt: number;
+  fx?: number;
 };
 
 function uid() {
@@ -384,6 +386,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
       commission,
       openedAt: pos.openedAt,
       closedAt: Date.now(),
+      fx: inrPerUsd(),
     };
     const remaining = pos.lots - closeLots;
     set({
@@ -518,6 +521,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
           commission: 0,
           openedAt: pos.openedAt,
           closedAt: Date.now(),
+          fx: inrPerUsd(),
         },
         ...history,
       ].slice(0, 80);
@@ -555,6 +559,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
             commission: 0,
             openedAt: pos.openedAt,
             closedAt: Date.now(),
+            fx: inrPerUsd(),
           },
           ...hist,
         ];

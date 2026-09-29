@@ -4,8 +4,8 @@ import { QuickLiveChart } from "@/components/trade/quick-live-chart";
 import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
-import { inrPerUsd, showMoney, useDisplayCcy } from "@/lib/money/display-ccy";
-import { openQuickBet, payoutRate, quickBets, settleQuick, subscribeQuick, type QuickBet, type QuickSide } from "@/lib/trading/quick";
+import { inrPerUsd, showFrozen, showMoney, useDisplayCcy } from "@/lib/money/display-ccy";
+import { openQuickBet, payoutRate, quickBets, settleQuick, subscribeQuick, type QuickSide } from "@/lib/trading/quick";
 import { useTradeStore } from "@/lib/trading/store";
 import { formatPrice } from "@/lib/utils";
 
@@ -26,7 +26,6 @@ export function QuickScreen() {
   const [seconds, setSeconds] = useState(60);
   const [amount, setAmount] = useState(ccy === "INR" ? "500" : "10");
   const [now, setNow] = useState(Date.now());
-  const [flash, setFlash] = useState<QuickBet | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -41,12 +40,6 @@ export function QuickScreen() {
   const focus = live?.symbol ?? selected;
   const inst = getInstrument(focus);
   const quote = market.getQuote(focus);
-
-  useEffect(() => {
-    const newest = closed[0];
-    if (!newest || newest.id === flash?.id) return;
-    if (Date.now() - newest.expiry < 8000) setFlash(newest);
-  }, [closed, flash?.id]);
 
   if (!quote) return <p className="p-4 text-sm text-muted">Waiting for the price.</p>;
 
@@ -92,12 +85,7 @@ export function QuickScreen() {
       )}
       {live && (
         <p className={`text-sm ${winning ? "text-buy" : "text-sell"}`}>
-          {live.side === "call" ? "Higher" : "Lower"} · entry {formatPrice(live.entry, inst.digits)} · price is {above ? "above" : "below"} · {winning ? "winning" : "losing"} · {left}s · stake {showMoney(live.stake, ccy)} locked
-        </p>
-      )}
-      {flash && !live && (
-        <p className={`text-sm ${flash.status === "win" ? "text-buy" : flash.status === "loss" ? "text-sell" : "text-muted"}`}>
-          {getInstrument(flash.symbol).display} {flash.status === "win" ? `won +${showMoney(flash.stake * flash.payout, ccy)}` : flash.status === "loss" ? `lost −${showMoney(flash.stake, ccy)}` : "tie, stake returned"}
+          {live.side === "call" ? "Higher" : "Lower"} · entry {formatPrice(live.entry, inst.digits)} · price is {above ? "above" : "below"} · {winning ? "winning" : "losing"} · {left}s · stake {showFrozen(live.stake, ccy, live.fx).replace(/^\+/, "")} locked
         </p>
       )}
       <div className="relative mt-2 min-h-[240px] flex-1 overflow-hidden rounded-xl border border-white/10">
@@ -118,7 +106,7 @@ export function QuickScreen() {
         </div>
         <button type="button" className="h-10 w-10 rounded-full bg-white/10" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
       </div>
-      <p className="mt-1 text-center text-xs text-muted">{live ? "Stake is locked until this candle trade ends." : `If win ${showMoney(back, ccy)}`}</p>
+      <p className="mt-1 text-center text-xs text-muted">{live ? "Stake is locked until this trade ends." : `If win ${showMoney(back, ccy)}`}</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button type="button" disabled={!!live} onClick={() => go("call")} className="h-12 rounded-full bg-[#d8f3e4] text-sm font-semibold text-[#146c43] disabled:opacity-40">
           Higher
@@ -128,20 +116,22 @@ export function QuickScreen() {
         </button>
       </div>
       <p className="mt-2 text-xs uppercase tracking-wide text-subtle">Settled history</p>
-      <ul className="mt-1 max-h-16 space-y-1 overflow-auto text-xs">
+      <ul className="mt-1 max-h-24 space-y-1 overflow-auto text-xs">
         {closed.slice(0, 8).map((bet) => {
           const item = getInstrument(bet.symbol);
-          const result = bet.status === "win" ? `+${showMoney(bet.stake * bet.payout, ccy)}` : bet.status === "tie" ? "tie" : `−${showMoney(bet.stake, ccy)}`;
+          const label = bet.status === "win" ? "Profit" : bet.status === "loss" ? "Loss" : "Tie";
           return (
             <li key={bet.id} className="flex justify-between gap-2">
               <span className="text-muted">
-                {item.display} {bet.side === "call" ? "Higher" : "Lower"} {showMoney(bet.stake, ccy)}
+                {item.display} {bet.side === "call" ? "Higher" : "Lower"} · {formatPrice(bet.entry, item.digits)} → {bet.settle != null ? formatPrice(bet.settle, item.digits) : "—"}
               </span>
-              <span className={bet.status === "win" ? "text-buy" : bet.status === "loss" ? "text-sell" : "text-fg"}>{result}</span>
+              <span className={bet.status === "win" ? "text-buy" : bet.status === "loss" ? "text-sell" : "text-fg"}>
+                {label} {showFrozen(bet.result, ccy, bet.fx)}
+              </span>
             </li>
           );
         })}
-        {closed.length === 0 && <li className="text-muted">Finished trades show here. The amount does not move after the result.</li>}
+        {closed.length === 0 && <li className="text-muted">Finished trades stay here. The result does not move.</li>}
       </ul>
     </div>
   );

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
-import { inrPerUsd, showMoney, useDisplayCcy } from "@/lib/money/display-ccy";
+import { inrPerUsd, showFrozen, showMoney, useDisplayCcy } from "@/lib/money/display-ccy";
 import { openOption, optionBets, settleOptions, strikesAround, subscribeOptions, type OptionSide } from "@/lib/trading/options-book";
 import { useTradeStore } from "@/lib/trading/store";
 import { formatPrice } from "@/lib/utils";
@@ -79,7 +79,7 @@ export function OptionsScreen() {
                 {getInstrument(bet.symbol).display} {bet.side.toUpperCase()} {formatPrice(bet.strike, getInstrument(bet.symbol).digits)}
               </span>
               <span className={bet.status === "win" ? "text-buy" : bet.status === "loss" ? "text-sell" : ""}>
-                {bet.status === "open" ? `${left}s` : bet.status === "win" ? `WIN ${showMoney(bet.credit, ccy)}` : "LOSS"}
+                {bet.status === "open" ? `${left}s` : bet.status === "win" ? `Profit ${showFrozen(bet.credit - bet.premium, ccy)}` : `Loss ${showFrozen(-bet.premium, ccy)}`}
               </span>
             </li>
           );
