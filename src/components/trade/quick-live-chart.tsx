@@ -8,17 +8,14 @@ const trails = new Map<string, Point[]>();
 
 function seed(symbol: string) {
   const now = Date.now();
-  const candles = market.getCandles(symbol, "1m").slice(-25);
   const quote = market.getQuote(symbol);
-  const points: Point[] = [];
-  for (const candle of candles) {
-    points.push({ t: candle.t, p: candle.o });
-    points.push({ t: candle.t + 20_000, p: candle.h });
-    points.push({ t: candle.t + 40_000, p: candle.l });
-    points.push({ t: candle.t + 55_000, p: candle.c });
-  }
-  if (quote) points.push({ t: now, p: quote.mid });
-  trails.set(symbol, points.filter((point) => now - point.t < 180_000));
+  const price = quote?.mid ?? 0;
+  if (!price) return;
+  trails.set(symbol, [
+    { t: now - 8_000, p: price },
+    { t: now - 4_000, p: price },
+    { t: now, p: price },
+  ]);
 }
 
 export function QuickLiveChart({
@@ -55,7 +52,7 @@ export function QuickLiveChart({
       const last = trail[trail.length - 1];
       if (!last || now - last.t > 160) trail.push({ t: now, p: shown });
       else last.p = shown;
-      const kept = trail.filter((point) => now - point.t < 180_000);
+      const kept = trail.filter((point) => now - point.t < 90_000);
       trails.set(symbol, kept);
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -76,20 +73,20 @@ export function QuickLiveChart({
       ctx.fillRect(0, 0, w, h);
 
       const inst = getInstrument(symbol);
-      const future = Math.max(28_000, expiry ? expiry - now + 12_000 : 28_000);
-      const t0 = now - 62_000;
+      const future = expiry && expiry > now ? Math.min(expiry - now + 4_000, 36_000) : 8_000;
+      const t0 = now - 36_000;
       const t1 = now + future;
-      const visible = kept.filter((point) => point.t >= t0 - 1000);
+      const visible = kept.filter((point) => point.t >= t0);
       const marks = visible.map((point) => point.p);
-      marks.push(quote.mid, shown);
+      marks.push(shown);
       if (entry && entry > 0) marks.push(entry);
-      let min = Math.min(...marks);
-      let max = Math.max(...marks);
-      const span = Math.max(max - min, quote.mid * 0.00035, inst.pip * 8);
-      const mid = (max + min) / 2 || quote.mid;
-      min = mid - span / 2;
-      max = mid + span / 2;
-      const padY = (max - min) * 0.16;
+      const lo = Math.min(...marks);
+      const hi = Math.max(...marks);
+      const tight = Math.max(hi - lo, inst.pip * 2, quote.mid * 0.000012);
+      const mid = (hi + lo) / 2 || quote.mid;
+      let min = mid - tight / 2;
+      let max = mid + tight / 2;
+      const padY = (max - min) * 0.08;
       min -= padY;
       max += padY;
 
@@ -190,7 +187,7 @@ export function QuickLiveChart({
   }, [symbol, entry, openedAt, expiry]);
 
   return (
-    <div ref={wrapRef} className="h-full min-h-[320px] w-full bg-[#0c1424]">
+    <div ref={wrapRef} className="h-full min-h-[180px] w-full bg-[#0c1424]">
       <canvas ref={canvasRef} className="block h-full w-full" />
     </div>
   );

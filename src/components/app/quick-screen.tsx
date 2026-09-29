@@ -111,7 +111,7 @@ export function QuickScreen() {
   }
 
   return (
-    <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-1 md:mb-0 lg:h-[calc(100dvh-2rem)] lg:flex-row lg:gap-5 lg:px-6 lg:pt-4">
+    <div className="-mb-28 flex h-[calc(100dvh-13.5rem)] flex-col px-3 pt-1 md:mb-0 lg:h-[calc(100dvh-2rem)] lg:flex-row lg:gap-5 lg:px-6 lg:pt-4">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -138,19 +138,26 @@ export function QuickScreen() {
           {live.side === "call" ? "Buy" : "Sell"} at {formatPrice(live.entry, inst.digits)} · {flat ? "at entry" : winning ? "in profit" : "in loss"} · {left}s
         </p>
       )}
-      <div className="relative mt-2 min-h-[320px] flex-1 overflow-hidden bg-[#0c1424]">
+      <div className="relative mt-2 min-h-0 flex-1 overflow-hidden bg-[#0c1424]">
         <QuickLiveChart symbol={focus} entry={live?.entry} openedAt={live?.openedAt ?? (live ? live.expiry - seconds * 1000 : null)} expiry={live?.expiry} />
       </div>
       </div>
       <div className="lg:flex lg:w-[340px] lg:shrink-0 lg:flex-col lg:justify-center lg:rounded-2xl lg:border lg:border-border lg:p-4">
       <div className="mt-2 grid grid-cols-2 gap-2">
-        <div className="flex h-12 items-center justify-between rounded-xl bg-[#1c2433] px-2 text-white">
-          <button type="button" className="size-8 text-lg" disabled={!!live} onClick={() => setAmount(String(Math.max(step, (Number(amount) || 0) - step)))}>−</button>
-          <div className="text-center">
-            <p className="text-sm font-medium">{ccy === "INR" ? "₹" : "$"}{amount}</p>
-            <p className="text-[10px] text-white/50">investment</p>
-          </div>
-          <button type="button" className="size-8 text-lg" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
+        <div className="flex h-12 items-center justify-between rounded-xl bg-[#1c2433] px-1 text-white">
+          <button type="button" className="grid size-10 place-items-center text-xl" disabled={!!live} onClick={() => setAmount(String(Math.max(step, (Number(amount) || 0) - step)))}>−</button>
+          <label className="min-w-0 flex-1 text-center">
+            <input
+              inputMode="decimal"
+              value={amount}
+              disabled={!!live}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+              className="w-full bg-transparent text-center text-base font-semibold text-white outline-none"
+              aria-label="Trade amount"
+            />
+            <p className="text-[10px] text-white/50">amount {ccy === "INR" ? "₹" : "$"}</p>
+          </label>
+          <button type="button" className="grid size-10 place-items-center text-xl" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
         </div>
         <div className="flex h-12 items-center justify-between rounded-xl bg-[#1c2433] px-2 text-white">
           <button type="button" className="size-8" disabled={!!live} onClick={() => stepTime(-1)}>‹</button>
@@ -173,7 +180,7 @@ export function QuickScreen() {
       </div>
       <p className="mt-1 text-center text-xs text-muted">{live ? "Trade is on the chart. Stake stays locked until it settles." : `Stake ${showMoney(stake, ccy)} · if win ${showMoney(back, ccy)}`}</p>
       <p className="mt-2 text-xs uppercase tracking-wide text-subtle">Settled history</p>
-      <ul className="mt-1 max-h-24 space-y-1 overflow-auto text-xs">
+      <ul className="mt-1 max-h-12 space-y-1 overflow-auto text-xs lg:max-h-24">
         {closed.slice(0, 8).map((bet) => {
           const item = getInstrument(bet.symbol);
           const label = bet.status === "win" ? "Profit" : bet.status === "loss" ? "Loss" : "Tie";
