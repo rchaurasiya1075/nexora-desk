@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { market } from "@/lib/market/engine";
 import { getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
+import { optionBets, subscribeOptions } from "@/lib/trading/options-book";
+import { quickBets, subscribeQuick } from "@/lib/trading/quick";
 import { positionPnl, useTradeStore } from "@/lib/trading/store";
 import { showFrozen, showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
 import { formatPrice } from "@/lib/utils";
@@ -12,6 +14,8 @@ export function PositionsScreen() {
   const positions = useTradeStore((s) => s.positions);
   const pending = useTradeStore((s) => s.pending);
   const history = useTradeStore((s) => s.history);
+  const quick = useSyncExternalStore(subscribeQuick, quickBets, () => []);
+  const options = useSyncExternalStore(subscribeOptions, optionBets, () => []);
   const closePosition = useTradeStore((s) => s.closePosition);
   const cancelPending = useTradeStore((s) => s.cancelPending);
   const [tab, setTab] = useState<"open" | "closed">("open");
@@ -99,12 +103,12 @@ export function PositionsScreen() {
       )}
       {tab === "closed" && (
       <ul className="mt-4 divide-y divide-border">
-        {history.slice(0, 20).map((row) => {
+        {history.map((row) => {
           const inst = getInstrument(row.symbol);
           return (
             <li key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm">
               <span>
-                {inst.display} {row.side.toUpperCase()} · {formatPrice(row.entry, inst.digits)} → {formatPrice(row.exit, inst.digits)}
+                Forex · {inst.display} {row.side.toUpperCase()} · {formatPrice(row.entry, inst.digits)} → {formatPrice(row.exit, inst.digits)}
               </span>
               <span className={row.pnl >= 0 ? "text-buy" : "text-sell"}>
                 {row.pnl >= 0 ? "Profit" : "Loss"} {showFrozen(row.pnl, ccy, row.fx)}
@@ -112,7 +116,36 @@ export function PositionsScreen() {
             </li>
           );
         })}
-        {history.length === 0 && <p className="py-3 text-sm text-muted">Closed trades show up here.</p>}
+        {quick.filter((bet) => bet.status !== "open").map((bet) => {
+          const inst = getInstrument(bet.symbol);
+          return (
+            <li key={bet.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+              <span>
+                Quick · {inst.display} {bet.side === "call" ? "Higher" : "Lower"} · {formatPrice(bet.entry, inst.digits)} → {bet.settle != null ? formatPrice(bet.settle, inst.digits) : "—"}
+              </span>
+              <span className={bet.result >= 0 ? "text-buy" : "text-sell"}>
+                {bet.status === "win" ? "Profit" : bet.status === "loss" ? "Loss" : "Tie"} {showFrozen(bet.result, ccy, bet.fx)}
+              </span>
+            </li>
+          );
+        })}
+        {options.filter((bet) => bet.status !== "open").map((bet) => {
+          const inst = getInstrument(bet.symbol);
+          const pnl = bet.status === "win" ? bet.credit - bet.premium : -bet.premium;
+          return (
+            <li key={bet.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+              <span>
+                Option · {inst.display} {bet.side === "call" ? "Call" : "Put"} · strike {formatPrice(bet.strike, inst.digits)}
+              </span>
+              <span className={pnl >= 0 ? "text-buy" : "text-sell"}>
+                {pnl >= 0 ? "Profit" : "Loss"} {showSigned(pnl, ccy)}
+              </span>
+            </li>
+          );
+        })}
+        {history.length === 0 && quick.every((bet) => bet.status === "open") && options.every((bet) => bet.status === "open") && (
+          <p className="py-3 text-sm text-muted">Closed trades show up here.</p>
+        )}
       </ul>
       )}
     </div>

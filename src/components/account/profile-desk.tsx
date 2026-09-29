@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Check, Copy, Plus } from "lucide-react";
 import { DepositDesk, P2pChat } from "@/components/trade/deposit-desk";
@@ -12,6 +12,8 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDeskSession } from "@/lib/firebase/session";
 import { useMarketTick } from "@/lib/market/use-market";
+import { optionBets, subscribeOptions } from "@/lib/trading/options-book";
+import { quickBets, subscribeQuick } from "@/lib/trading/quick";
 import { listMyDeposits } from "@/lib/ops/api";
 import { watchDeposits } from "@/lib/firebase/desk";
 import { addSupport, readControl, requestWithdrawal, subscribeControl } from "@/lib/ops/control-store";
@@ -46,6 +48,44 @@ export function ProfileDesk() {
   const balance = useTradeStore((s) => s.balance);
   const positions = useTradeStore((s) => s.positions);
   const history = useTradeStore((s) => s.history);
+  const quick = useSyncExternalStore(subscribeQuick, quickBets, () => []);
+  const options = useSyncExternalStore(subscribeOptions, optionBets, () => []);
+  const trades = useMemo(() => {
+    const forex = history.map((row) => ({
+      id: row.id,
+      symbol: row.symbol,
+      side: row.side,
+      lots: row.lots,
+      entry: row.entry,
+      exit: row.exit,
+      pnl: row.pnl,
+      closedAt: row.closedAt,
+      kind: "Forex",
+    }));
+    const fast = quick.map((bet) => ({
+      id: bet.id,
+      symbol: bet.symbol,
+      side: bet.side === "call" ? "Higher" : "Lower",
+      lots: bet.stake,
+      entry: bet.entry,
+      exit: bet.settle ?? bet.entry,
+      pnl: bet.status === "open" ? 0 : bet.result,
+      closedAt: bet.status === "open" ? bet.expiry : bet.expiry,
+      kind: bet.status === "open" ? "Quick · running" : "Quick",
+    }));
+    const opts = options.map((bet) => ({
+      id: bet.id,
+      symbol: bet.symbol,
+      side: bet.side === "call" ? "Call" : "Put",
+      lots: bet.premium,
+      entry: bet.strike,
+      exit: bet.settle ?? bet.strike,
+      pnl: bet.status === "open" ? 0 : bet.status === "win" ? bet.credit - bet.premium : -bet.premium,
+      closedAt: bet.expiry,
+      kind: bet.status === "open" ? "Option · running" : "Option",
+    }));
+    return [...forex, ...fast, ...opts].sort((a, b) => b.closedAt - a.closedAt);
+  }, [history, quick, options]);
   const accountStatus = useTradeStore((s) => s.status);
   const hydrateFromServer = useTradeStore((s) => s.hydrateFromServer);
   const [prefs, setPrefs] = useState<ProfilePrefs | null>(null);
@@ -262,7 +302,7 @@ export function ProfileDesk() {
         <History
           deposits={deposits}
           withdrawals={withdrawals}
-          trades={history}
+          trades={trades}
           show={show}
         />
       )}
@@ -702,7 +742,7 @@ function History({
 }: {
   deposits: DepositRequest[];
   withdrawals: { id: string; amount: number; note: string; status: string; createdAt: string }[];
-  trades: { id: string; symbol: string; side: string; lots: number; entry: number; exit: number; pnl: number; closedAt: number }[];
+  trades: { id: string; symbol: string; side: string; lots: number; entry: number; exit: number; pnl: number; closedAt: number; kind?: string }[];
   show: (usd: number) => string;
 }) {
   const activity = useMemo(() => {
@@ -726,8 +766,8 @@ function History({
       ...trades.map((row) => ({
         id: row.id,
         at: new Date(row.closedAt).toISOString(),
-        label: `${row.symbol} ${row.side}`,
-        detail: `${row.lots} lots · ${row.entry} → ${row.exit}`,
+        label: `${row.kind || "Trade"} · ${row.symbol} ${row.side}`,
+        detail: `stake ${row.lots} · ${row.entry} → ${row.exit}`,
         amount: formatSigned(row.pnl),
         status: row.pnl >= 0 ? "profit" : "loss",
       })),
@@ -775,8 +815,8 @@ function History({
           rows={trades.map((row) => ({
             id: row.id,
             at: new Date(row.closedAt).toISOString(),
-            label: `${row.symbol} · ${row.side}`,
-            detail: `${row.lots} · entry ${row.entry} · exit ${row.exit}`,
+            label: `${row.kind || "Trade"} · ${row.symbol} · ${row.side}`,
+            detail: `stake ${row.lots} · entry ${row.entry} · exit ${row.exit}`,
             amount: formatSigned(row.pnl),
             status: row.pnl >= 0 ? "profit" : "loss",
           }))}
