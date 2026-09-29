@@ -18,9 +18,11 @@ function seed(symbol: string) {
   ]);
 }
 
-type CrowdBet = { t: number; p: number; side: "buy" | "sell"; amount: number };
+type CrowdBet = { t: number; p: number; side: "buy" | "sell"; amount: number; letter: string; color: string };
 
-const AMOUNTS = [10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000];
+const AMOUNTS = [10, 25, 50, 100, 200, 500];
+const LETTERS = ["A", "R", "S", "K", "M", "P", "N", "V"];
+const COLORS = ["#3b82f6", "#7c3aed", "#d97706", "#0f766e", "#db2777", "#15803d"];
 
 export function QuickLiveChart({
   symbol,
@@ -29,6 +31,7 @@ export function QuickLiveChart({
   expiry,
   stakeLabel,
   side,
+  trader,
 }: {
   symbol: string;
   entry?: number | null;
@@ -36,6 +39,7 @@ export function QuickLiveChart({
   expiry?: number | null;
   stakeLabel?: string | null;
   side?: "call" | "put" | null;
+  trader?: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -48,7 +52,7 @@ export function QuickLiveChart({
     let shown = market.getQuote(symbol)?.mid ?? entry ?? 0;
     let frame = 0;
     const crowd: CrowdBet[] = [];
-    let nextCrowd = 0;
+    let nextCrowd = Date.now() + 2800;
 
     const draw = () => {
       const quote = market.getQuote(symbol);
@@ -66,16 +70,18 @@ export function QuickLiveChart({
       trails.set(symbol, kept);
       if (now >= nextCrowd) {
         crowd.push({
-          t: now - 400,
+          t: now - 600,
           p: shown,
-          side: Math.random() > 0.48 ? "buy" : "sell",
+          side: Math.random() > 0.5 ? "buy" : "sell",
           amount: AMOUNTS[Math.floor(Math.random() * AMOUNTS.length)] ?? 50,
+          letter: LETTERS[Math.floor(Math.random() * LETTERS.length)] ?? "A",
+          color: COLORS[Math.floor(Math.random() * COLORS.length)] ?? "#3b82f6",
         });
-        if (crowd.length > 8) crowd.shift();
-        nextCrowd = now + 900 + Math.random() * 1600;
+        if (crowd.length > 3) crowd.shift();
+        nextCrowd = now + 4800 + Math.random() * 4200;
       }
       for (let i = crowd.length - 1; i >= 0; i -= 1) {
-        if (now - crowd[i].t > 12_000) crowd.splice(i, 1);
+        if (now - crowd[i].t > 22_000) crowd.splice(i, 1);
       }
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -102,16 +108,15 @@ export function QuickLiveChart({
       const visible = kept.filter((point) => point.t >= t0);
       const marks = visible.map((point) => point.p);
       marks.push(shown);
-      if (entry && entry > 0) marks.push(entry);
-      const lo = Math.min(...marks);
-      const hi = Math.max(...marks);
-      const tight = Math.max((hi - lo) * 1.8, inst.pip * 10, quote.mid * 0.00006);
-      const mid = (hi + lo) / 2 || quote.mid;
-      let min = mid - tight / 2;
-      let max = mid + tight / 2;
-      const padY = (max - min) * 0.08;
-      min -= padY;
-      max += padY;
+      const center = marks.reduce((sum, level) => sum + level, 0) / marks.length || quote.mid;
+      let peak = 0;
+      for (const level of marks) peak = Math.max(peak, Math.abs(level - center));
+      if (entry && entry > 0) peak = Math.max(peak, Math.abs(entry - center));
+      if (peak < inst.pip * 0.04) peak = inst.pip * 0.04;
+      const swing = inst.pip * 2;
+      const wave = (level: number) => center + ((level - center) / peak) * swing;
+      const min = center - swing * 1.45;
+      const max = center + swing * 1.45;
 
       const padL = 8;
       const padR = 16;
@@ -120,14 +125,13 @@ export function QuickLiveChart({
       const plotW = w - padL - padR;
       const plotH = h - padT - padB;
       const xOf = (t: number) => padL + ((t - t0) / (t1 - t0)) * plotW;
-      const yOf = (level: number) => padT + ((max - level) / (max - min)) * plotH;
+      const yOf = (level: number) => padT + ((max - wave(level)) / (max - min)) * plotH;
 
       ctx.strokeStyle = "rgba(255,255,255,0.05)";
       ctx.fillStyle = "rgba(255,255,255,0.35)";
       ctx.font = "11px Inter, sans-serif";
       for (let i = 0; i <= 4; i++) {
-        const level = min + ((max - min) * i) / 4;
-        const y = yOf(level);
+        const y = padT + (plotH * i) / 4;
         ctx.beginPath();
         ctx.moveTo(padL, y);
         ctx.lineTo(w - padR, y);
@@ -199,15 +203,23 @@ export function QuickLiveChart({
           const y = yOf(bet.p);
           const up = bet.side === "buy";
           const text = `$${bet.amount}`;
-          const tw = ctx.measureText(text).width + 12;
-          const ty = up ? y - 22 : y + 6;
-          ctx.globalAlpha = 0.9;
-          ctx.fillStyle = up ? "rgba(20,128,74,0.85)" : "rgba(197,54,58,0.85)";
+          ctx.fillStyle = bet.color;
+          ctx.beginPath();
+          ctx.arc(x, up ? y - 18 : y + 18, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 10px Inter, sans-serif";
+          ctx.fillText(bet.letter, x - 3, (up ? y - 18 : y + 18) + 3);
+          ctx.font = "11px Inter, sans-serif";
+          const tw = ctx.measureText(text).width + 10;
+          const ty = up ? y - 40 : y + 28;
+          ctx.globalAlpha = 0.92;
+          ctx.fillStyle = up ? "rgba(20,128,74,0.9)" : "rgba(197,54,58,0.9)";
           ctx.beginPath();
           ctx.roundRect(x - tw / 2, ty, tw, 16, 8);
           ctx.fill();
           ctx.fillStyle = "#ffffff";
-          ctx.fillText(text, x - tw / 2 + 6, ty + 12);
+          ctx.fillText(text, x - tw / 2 + 5, ty + 12);
           ctx.globalAlpha = 1;
           ctx.fillStyle = up ? "#35d07f" : "#ff5a6a";
           ctx.beginPath();
@@ -219,8 +231,17 @@ export function QuickLiveChart({
           const y = yOf(entry);
           const mineUp = side !== "put";
           const tag = mineUp ? `BUY ${stakeLabel}` : `SELL ${stakeLabel}`;
+          const face = (trader || "Y").slice(0, 1).toUpperCase();
+          ctx.fillStyle = "#2563eb";
+          ctx.beginPath();
+          ctx.arc(x1, mineUp ? y - 16 : y + 16, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 11px Inter, sans-serif";
+          ctx.fillText(face, x1 - 4, (mineUp ? y - 16 : y + 16) + 4);
+          ctx.font = "11px Inter, sans-serif";
           const tw = ctx.measureText(tag).width + 16;
-          const ty = mineUp ? y - 30 : y + 12;
+          const ty = mineUp ? y - 40 : y + 28;
           ctx.fillStyle = mineUp ? "#14804a" : "#c5363a";
           ctx.beginPath();
           ctx.roundRect(Math.max(8, x1 - tw / 2), ty, tw, 20, 10);
@@ -260,7 +281,7 @@ export function QuickLiveChart({
 
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, [symbol, entry, openedAt, expiry, stakeLabel, side]);
+  }, [symbol, entry, openedAt, expiry, stakeLabel, side, trader]);
 
   return (
     <div ref={wrapRef} className="h-full min-h-[180px] w-full bg-[#0c1424]">

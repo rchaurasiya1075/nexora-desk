@@ -146,6 +146,7 @@ export function QuickScreen() {
           expiry={live?.expiry}
           stakeLabel={live ? showMoney(live.stake, ccy) : null}
           side={live?.side}
+          trader={(user?.name || user?.email || "Y").slice(0, 1)}
         />
       </div>
       </div>
