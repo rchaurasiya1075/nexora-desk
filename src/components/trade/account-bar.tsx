@@ -50,9 +50,8 @@ export function AccountBar({ onDeposit }: { onDeposit: () => void }) {
       <div className="ml-auto flex min-w-0 items-center gap-4 overflow-x-auto text-[11px] num">
         <Stat label="Available to trade" value={formatMoney(Math.max(0, snap.free))} />
         <Stat
-          label="Net equity"
-          value={formatMoney(snap.equity)}
-          tone={snap.floating >= 0 ? "buy" : "sell"}
+          label="Main balance"
+          value={formatMoney(balance)}
         />
         <Stat label="Cash (USD)" value={formatMoney(balance)} className="hidden md:flex" />
         <Stat

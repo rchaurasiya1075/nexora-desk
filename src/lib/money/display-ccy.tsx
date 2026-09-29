@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { market } from "@/lib/market/engine";
 import { formatMoney } from "@/lib/utils";
 
 const KEY = "morgan.display-ccy";
@@ -17,12 +16,6 @@ export function setDisplayCcy(next: Ccy) {
 }
 
 export function inrPerUsd() {
-  try {
-    const mid = market.getQuote("USDINR").mid;
-    if (mid > 50 && mid < 130) return mid;
-  } catch {
-    /* quote not ready */
-  }
   return 88.42;
 }
 

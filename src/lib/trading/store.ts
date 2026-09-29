@@ -24,6 +24,7 @@ export type Position = {
   commission: number;
   leverage: number;
   style: HoldStyle;
+  stake?: number;
 };
 export type PendingOrder = {
   id: string;
@@ -117,6 +118,7 @@ type TradeState = BookSlice & {
     tp: number | null;
     style?: HoldStyle;
     leverage?: number;
+    stake?: number;
   }) => { ok: true; id: string } | { ok: false; error: string };
   placePending: (input: {
     symbol: string;
@@ -160,6 +162,7 @@ function openPosition(
     tp: number | null;
     style?: HoldStyle;
     leverage?: number;
+    stake?: number;
   },
   pricing: AccountPricing,
 ): Position {
@@ -178,6 +181,7 @@ function openPosition(
     commission: commissionCost(inst, input.lots, pricing),
     leverage: input.leverage && input.leverage > 0 ? input.leverage : inst.leverage,
     style: input.style ?? "carry",
+    stake: input.stake && input.stake > 0 ? Number(input.stake.toFixed(2)) : 0,
   };
 }
 
@@ -323,6 +327,8 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     const inst = getInstrument(input.symbol);
     const q = market.getQuote(input.symbol);
     const entry = input.side === "buy" ? q.ask : q.bid;
+    const stake = input.stake && input.stake > 0 ? Number(input.stake.toFixed(2)) : 0;
+    if (stake > get().balance + 0.001) return { ok: false, error: "Not enough balance for this trade amount." };
     const margin = requiredMargin(inst, input.lots, entry, input.leverage);
     const { equity, free } = snapshot(get());
     if (margin > free) {
@@ -335,7 +341,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     const pos = openPosition(input, get().pricing);
     set({
       positions: [...get().positions, pos],
-      balance: get().balance - pos.commission,
+      balance: get().balance - pos.commission - stake,
       lastToast: `${input.side === "buy" ? "Bought" : "Sold"} ${input.lots} ${inst.display} @ ${entry.toFixed(inst.digits)}`,
     });
     scheduleSave();
@@ -391,7 +397,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     };
     const remaining = pos.lots - closeLots;
     set({
-      balance: get().balance + pnl - commission,
+      balance: get().balance + pnl - commission + (pos.stake || 0) * (closeLots / pos.lots),
       positions:
         remaining > 0.001
           ? get().positions.map((p) =>
@@ -424,7 +430,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     set({
       positions: get().positions.filter((p) => p.id !== id),
       history: [row, ...get().history].slice(0, 80),
-      balance: Math.max(0, Number((get().balance + pnlUsd).toFixed(2))),
+      balance: Math.max(0, Number((get().balance + pnlUsd + (pos.stake || 0)).toFixed(2))),
       cashLock: true,
       lastToast: pnlUsd >= 0 ? `Profit set $${pnlUsd}` : `Loss set $${pnlUsd}`,
     });
@@ -553,7 +559,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
         },
         ...history,
       ].slice(0, 80);
-      balance += pnl;
+      balance += pnl + (pos.stake || 0);
       toast = expired
         ? `Intraday squared off ${pos.symbol}`
         : hitSl
@@ -574,7 +580,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
       for (const pos of live.positions) {
         const q = market.getQuote(pos.symbol);
         const pnl = positionPnl(pos, q.bid, q.ask);
-        bal += pnl;
+        bal += pnl + (pos.stake || 0);
         hist = [
           {
             id: uid(),

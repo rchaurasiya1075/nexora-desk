@@ -92,6 +92,7 @@ export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?:
         tp: tpN,
         style: hold,
         leverage: lev,
+        stake: usd,
       });
       if (!res.ok) {
         toast.error(res.error);

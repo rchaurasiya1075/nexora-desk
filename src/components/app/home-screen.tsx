@@ -7,7 +7,7 @@ import { INSTRUMENTS, getInstrument, type Instrument } from "@/lib/market/instru
 import { useMarketTick } from "@/lib/market/use-market";
 import { useDeskSession } from "@/lib/firebase/session";
 import { ARTICLES } from "@/lib/news";
-import { positionPnl, useTradeStore } from "@/lib/trading/store";
+import { useTradeStore } from "@/lib/trading/store";
 import { Logo } from "@/components/layout/site-header";
 import { CurrencyToggle, showMoney, showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
 import { formatPct, formatPrice } from "@/lib/utils";
@@ -18,21 +18,16 @@ export function HomeScreen() {
   useMarketTick();
   const { user } = useDeskSession();
   const balance = useTradeStore((s) => s.balance);
-  const positions = useTradeStore((s) => s.positions);
   const history = useTradeStore((s) => s.history);
   const [filter, setFilter] = useState<"all" | "forex" | "gold" | "gainers" | "inr">("all");
   const ccy = useDisplayCcy();
   const [story, setStory] = useState<"news" | "movers" | "gold" | null>(null);
   const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
   useEffect(() => watchPayDesk(setPay), []);
-  const floating = positions.reduce((sum, pos) => {
-    const q = market.getQuote(pos.symbol);
-    return sum + positionPnl(pos, q.bid, q.ask);
-  }, 0);
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const today = history.filter((row) => row.closedAt >= start.getTime()).reduce((sum, row) => sum + row.pnl, 0);
-  const pnl = today + floating;
+  const pnl = today;
   const pnlPct = balance > 0 ? (pnl / balance) * 100 : 0;
   const initial = (user?.name || user?.email || "S").slice(0, 1).toUpperCase();
   const eur = market.getQuote("EURUSD");
@@ -76,10 +71,10 @@ export function HomeScreen() {
       </header>
 
       <section className="mt-5 rounded-2xl border border-border bg-bg-elevated p-5">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Portfolio balance</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Main balance</p>
         <p className="mt-1 text-5xl font-medium tracking-tight">{showMoney(balance, ccy)}</p>
         <p className={`mt-2 text-sm font-medium ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
-          Today's P/L: {showSigned(pnl, ccy)} ({formatPct(pnlPct)})
+          Settled today: {showSigned(pnl, ccy)} ({formatPct(pnlPct)})
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Link to="/trade" search={{ desk: "quick" }} className="flex h-12 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-accent-fg active:scale-[0.98]">
