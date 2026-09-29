@@ -139,7 +139,14 @@ export function QuickScreen() {
         </p>
       )}
       <div className="relative mt-2 min-h-0 flex-1 overflow-hidden bg-[#0c1424]">
-        <QuickLiveChart symbol={focus} entry={live?.entry} openedAt={live?.openedAt ?? (live ? live.expiry - seconds * 1000 : null)} expiry={live?.expiry} />
+        <QuickLiveChart
+          symbol={focus}
+          entry={live?.entry}
+          openedAt={live?.openedAt ?? (live ? live.expiry - seconds * 1000 : null)}
+          expiry={live?.expiry}
+          stakeLabel={live ? showMoney(live.stake, ccy) : null}
+          side={live?.side}
+        />
       </div>
       </div>
       <div className="lg:flex lg:w-[340px] lg:shrink-0 lg:flex-col lg:justify-center lg:rounded-2xl lg:border lg:border-border lg:p-4">

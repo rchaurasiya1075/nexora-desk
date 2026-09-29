@@ -18,16 +18,24 @@ function seed(symbol: string) {
   ]);
 }
 
+type CrowdBet = { t: number; p: number; side: "buy" | "sell"; amount: number };
+
+const AMOUNTS = [10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000];
+
 export function QuickLiveChart({
   symbol,
   entry,
   openedAt,
   expiry,
+  stakeLabel,
+  side,
 }: {
   symbol: string;
   entry?: number | null;
   openedAt?: number | null;
   expiry?: number | null;
+  stakeLabel?: string | null;
+  side?: "call" | "put" | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -39,6 +47,8 @@ export function QuickLiveChart({
     if (!trails.has(symbol)) seed(symbol);
     let shown = market.getQuote(symbol)?.mid ?? entry ?? 0;
     let frame = 0;
+    const crowd: CrowdBet[] = [];
+    let nextCrowd = 0;
 
     const draw = () => {
       const quote = market.getQuote(symbol);
@@ -54,6 +64,19 @@ export function QuickLiveChart({
       else last.p = shown;
       const kept = trail.filter((point) => now - point.t < 90_000);
       trails.set(symbol, kept);
+      if (now >= nextCrowd) {
+        crowd.push({
+          t: now - 400,
+          p: shown,
+          side: Math.random() > 0.48 ? "buy" : "sell",
+          amount: AMOUNTS[Math.floor(Math.random() * AMOUNTS.length)] ?? 50,
+        });
+        if (crowd.length > 8) crowd.shift();
+        nextCrowd = now + 900 + Math.random() * 1600;
+      }
+      for (let i = crowd.length - 1; i >= 0; i -= 1) {
+        if (now - crowd[i].t > 12_000) crowd.splice(i, 1);
+      }
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = wrap.clientWidth;
@@ -82,7 +105,7 @@ export function QuickLiveChart({
       if (entry && entry > 0) marks.push(entry);
       const lo = Math.min(...marks);
       const hi = Math.max(...marks);
-      const tight = Math.max(hi - lo, inst.pip * 2, quote.mid * 0.000012);
+      const tight = Math.max((hi - lo) * 1.8, inst.pip * 10, quote.mid * 0.00006);
       const mid = (hi + lo) / 2 || quote.mid;
       let min = mid - tight / 2;
       let max = mid + tight / 2;
@@ -140,6 +163,23 @@ export function QuickLiveChart({
       }
 
       if (visible.length > 1) {
+        const floor = h - padB;
+        ctx.beginPath();
+        visible.forEach((point, index) => {
+          const x = xOf(point.t);
+          const y = yOf(point.p);
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.lineTo(xOf(visible[visible.length - 1].t), floor);
+        ctx.lineTo(xOf(visible[0].t), floor);
+        ctx.closePath();
+        const wash = ctx.createLinearGradient(0, padT, 0, floor);
+        wash.addColorStop(0, "rgba(74,163,255,0.28)");
+        wash.addColorStop(1, "rgba(74,163,255,0.02)");
+        ctx.fillStyle = wash;
+        ctx.fill();
+
         ctx.beginPath();
         visible.forEach((point, index) => {
           const x = xOf(point.t);
@@ -152,6 +192,42 @@ export function QuickLiveChart({
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
         ctx.stroke();
+
+        for (const bet of crowd) {
+          if (bet.t < t0) continue;
+          const x = xOf(bet.t);
+          const y = yOf(bet.p);
+          const up = bet.side === "buy";
+          const text = `$${bet.amount}`;
+          const tw = ctx.measureText(text).width + 12;
+          const ty = up ? y - 22 : y + 6;
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = up ? "rgba(20,128,74,0.85)" : "rgba(197,54,58,0.85)";
+          ctx.beginPath();
+          ctx.roundRect(x - tw / 2, ty, tw, 16, 8);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(text, x - tw / 2 + 6, ty + 12);
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = up ? "#35d07f" : "#ff5a6a";
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (entry && entry > 0 && openedAt && stakeLabel) {
+          const x1 = xOf(openedAt);
+          const y = yOf(entry);
+          const mineUp = side !== "put";
+          const tag = mineUp ? `BUY ${stakeLabel}` : `SELL ${stakeLabel}`;
+          const tw = ctx.measureText(tag).width + 16;
+          const ty = mineUp ? y - 30 : y + 12;
+          ctx.fillStyle = mineUp ? "#14804a" : "#c5363a";
+          ctx.beginPath();
+          ctx.roundRect(Math.max(8, x1 - tw / 2), ty, tw, 20, 10);
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(tag, Math.max(8, x1 - tw / 2) + 8, ty + 14);
+        }
         const tip = visible[visible.length - 1]!;
         const tx = xOf(now);
         const ty = yOf(shown);
@@ -184,7 +260,7 @@ export function QuickLiveChart({
 
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, [symbol, entry, openedAt, expiry]);
+  }, [symbol, entry, openedAt, expiry, stakeLabel, side]);
 
   return (
     <div ref={wrapRef} className="h-full min-h-[180px] w-full bg-[#0c1424]">
