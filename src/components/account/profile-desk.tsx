@@ -141,7 +141,7 @@ export function ProfileDesk() {
           )}
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-subtle">Trader profile</p>
-            <h1 className="mt-1 font-display text-4xl">{user.name || "Trader"}</h1>
+            <h1 className="mt-1 text-2xl font-semibold">{user.name || "Trader"}</h1>
             <p className="mt-1 text-sm text-muted">{user.email}</p>
             <div className="mt-3 flex gap-2">
               <Button type="button" variant="outline" onClick={() => setSection("security")}>
@@ -188,7 +188,14 @@ export function ProfileDesk() {
             used={show(snap.used)}
             currency={prefs.currency}
             onAdd={() => setMoney("in")}
-            onOut={() => setMoney("out")}
+            onOut={() => {
+              if (kyc !== "verified") {
+                toast.error("Complete KYC before you can withdraw.");
+                setSection("kyc");
+                return;
+              }
+              setMoney("out");
+            }}
           />
           <div className="grid gap-3">
             <Jump title="Wallet & funds" text="Balances, deposits, withdrawals, full history." onClick={() => setSection("wallet")} />
@@ -211,7 +218,14 @@ export function ProfileDesk() {
             used={show(snap.used)}
             currency={prefs.currency}
             onAdd={() => setMoney("in")}
-            onOut={() => setMoney("out")}
+            onOut={() => {
+              if (kyc !== "verified") {
+                toast.error("Complete KYC before you can withdraw.");
+                setSection("kyc");
+                return;
+              }
+              setMoney("out");
+            }}
           />
           <p className="mt-4 text-sm text-muted">
             Book currency is USD. {prefs.currency === "INR" ? `INR view uses ₹${rate} per dollar.` : "Switch the view under Security."}{" "}
@@ -500,7 +514,7 @@ function Kyc({ prefs, name, onChange }: { prefs: ProfilePrefs; name: string; onC
     >
       <h2 className="font-display text-2xl">Verification</h2>
       <p className="mt-2 text-sm text-muted">
-        Government ID and address stay masked. This desk does not mark you verified by itself.
+        Withdrawal stays locked until KYC is successful. Fill this form, then an admin approves it.
       </p>
       <label className="mt-4 block text-xs uppercase tracking-wide text-subtle">Mobile</label>
       <Input className="mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91" />

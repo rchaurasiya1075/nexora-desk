@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Briefcase, Home, LineChart, User, ArrowLeftRight } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
-import { currentForce, publishLive, watchMyForce, watchMyKyc, type KycStatus } from "@/lib/ops/live-desk";
+import { useEffect, type ReactNode } from "react";
+import { currentForce, publishLive, watchMyForce } from "@/lib/ops/live-desk";
 import { market } from "@/lib/market/engine";
 import { settleOptions } from "@/lib/trading/options-book";
 import { settleQuick } from "@/lib/trading/quick";
@@ -26,17 +26,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const openCount = useTradeStore((s) => s.positions.length);
   const { user, signOutDesk } = useDeskSession();
-  const [kyc, setKyc] = useState<KycStatus>("verified");
-  const [kycOpen, setKycOpen] = useState(false);
 
   useEffect(() => watchMyForce(), []);
-  useEffect(() => watchMyKyc(setKyc), []);
-  useEffect(() => {
-    if (kyc !== "unverified") return;
-    if (sessionStorage.getItem("kyc-note")) return;
-    sessionStorage.setItem("kyc-note", "1");
-    setKycOpen(true);
-  }, [kyc]);
   useEffect(() => {
     const timer = setInterval(() => {
       const force = currentForce();
@@ -139,25 +130,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </ul>
       </nav>
-      {kyc !== "verified" && (
-        <button
-          type="button"
-          aria-label="KYC"
-          onClick={() => setKycOpen((open) => !open)}
-          className="fixed left-1/2 top-3 z-40 flex size-11 -translate-x-1/2 items-center justify-center rounded-full bg-[#eb5b3c] text-[10px] font-semibold tracking-wide text-white shadow-sm"
-        >
-          KYC
-        </button>
-      )}
-      {kycOpen && kyc !== "verified" && (
-        <div className="fixed left-1/2 top-16 z-40 w-[min(100vw-2rem,18rem)] -translate-x-1/2 rounded-2xl border border-border bg-bg-elevated p-4 shadow-[0_12px_40px_rgba(16,24,40,0.12)]">
-          <p className="text-sm font-semibold text-[#eb5b3c]">KYC not done</p>
-          <p className="mt-1 text-sm leading-6 text-muted">Kindly fill KYC for security purposes.</p>
-          <Link to="/account" className="mt-3 flex h-10 items-center justify-center rounded-full bg-[#00b386] text-sm font-medium text-white" onClick={() => setKycOpen(false)}>
-            Fill KYC
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

@@ -53,34 +53,34 @@ export function HomeScreen() {
     .slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-4">
+    <div className="mx-auto max-w-lg px-4 pb-6 pt-3">
       <header className="flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-2">
+        <Logo compact />
+        <div className="flex items-center gap-1.5">
           <CurrencyToggle />
-          <Link to="/markets" className="flex size-10 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
-            <Search className="size-4" />
+          <Link to="/markets" className="flex size-8 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
+            <Search className="size-3.5" />
           </Link>
-          <button type="button" onClick={() => setStory("news")} className="flex size-10 items-center justify-center rounded-full bg-bg-subtle" aria-label="News">
-            <Bell className="size-4" />
+          <button type="button" onClick={() => setStory("news")} className="flex size-8 items-center justify-center rounded-full bg-bg-subtle" aria-label="News">
+            <Bell className="size-3.5" />
           </button>
-          <Link to="/account" className="flex size-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-fg" aria-label="Profile">
-            {user ? initial : <UserRound className="size-4" />}
+          <Link to="/account" className="flex size-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-fg" aria-label="Profile">
+            {user ? initial : <UserRound className="size-3.5" />}
           </Link>
         </div>
       </header>
 
-      <section className="mt-8 rounded-3xl border border-border bg-bg-elevated p-6 shadow-[var(--shadow-border)]">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-subtle">Main balance</p>
-        <p className="mt-1 text-5xl font-medium tracking-tight">{showMoney(balance, ccy)}</p>
-        <p className={`mt-2 text-sm font-medium ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
-          Settled today: {showSigned(pnl, ccy)} ({formatPct(pnlPct)})
+      <section className="mt-5">
+        <p className="text-[11px] text-subtle">Main balance</p>
+        <p className="mt-1 text-[28px] font-semibold leading-none tracking-tight">{showMoney(balance, ccy)}</p>
+        <p className={`mt-1.5 text-xs ${pnl >= 0 ? "text-buy" : "text-sell"}`}>
+          Settled today {showSigned(pnl, ccy)} ({formatPct(pnlPct)})
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link to="/trade" search={{ desk: "quick" }} className="flex h-12 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-accent-fg active:scale-[0.98]">
+          <Link to="/trade" search={{ desk: "quick" }} className="flex h-9 items-center justify-center rounded-lg bg-accent text-xs font-semibold text-accent-fg">
             Quick Trade
           </Link>
-          <Link to="/trade" search={{ desk: "swing" }} className="flex h-12 items-center justify-center rounded-xl bg-bg-subtle text-sm font-medium active:scale-[0.98]">
+          <Link to="/trade" search={{ desk: "swing" }} className="flex h-9 items-center justify-center rounded-lg bg-bg-subtle text-xs font-medium">
             Swing Trade
           </Link>
         </div>
@@ -88,25 +88,23 @@ export function HomeScreen() {
 
       {(pay.eventTitle || pay.eventImage) && (
         <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-bg-elevated">
-          {pay.eventImage && <img src={pay.eventImage} alt="" className="max-h-52 w-full object-cover" />}
-          <div className="p-4">
-            <p className="text-[11px] uppercase tracking-wide text-subtle">Daily event</p>
-            <p className="mt-1 text-lg font-medium">{pay.eventTitle}</p>
+          {pay.eventImage && <img src={pay.eventImage} alt="" className="max-h-28 w-full object-cover" />}
+          <div className="px-1 py-3">
+            <p className="text-[11px] text-subtle">Daily event</p>
+            <p className="mt-0.5 text-sm font-medium">{pay.eventTitle}</p>
             {pay.eventText && <p className="mt-1 text-sm text-muted">{pay.eventText}</p>}
           </div>
         </section>
       )}
 
-      <h2 className="mt-6 text-xs uppercase tracking-[0.16em] text-subtle">Market stories</h2>
-      <div className="mt-3 flex gap-4">
-        <StoryBubble label="Live News" onClick={() => setStory("news")} />
-        <StoryBubble label="Top Movers" onClick={() => setStory("movers")} />
+      <h2 className="mt-7 text-[13px] font-medium text-fg">Stories</h2>
+      <div className="mt-2 flex gap-5">
+        <StoryBubble label="News" onClick={() => setStory("news")} />
+        <StoryBubble label="Movers" onClick={() => setStory("movers")} />
         <StoryBubble label="Gold" onClick={() => setStory("gold")} />
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-sm font-medium">Watchlist</h2>
-      </div>
+      <h2 className="mt-7 text-[13px] font-medium">Watchlist</h2>
       <div className="mt-3 flex gap-2 overflow-x-auto">
         {(
           [
@@ -127,18 +125,18 @@ export function HomeScreen() {
           </button>
         ))}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-1 divide-y divide-border">
         {cards.map((inst) => (
-          <PairCard key={inst.symbol} inst={inst} />
+          <PairRow key={inst.symbol} inst={inst} />
         ))}
       </div>
 
-      <section className="mt-5 rounded-2xl border border-border p-4">
-        <p className="text-xs uppercase tracking-[0.16em] text-subtle">Market sentiment</p>
-        <p className="mt-2 text-sm">
-          <span className={bullish ? "text-buy" : "text-sell"}>{bias}%</span> session bias is {bullish ? "bullish" : "bearish"} on EUR/USD
+      <section className="mt-6">
+        <p className="text-[13px] font-medium">Market sentiment</p>
+        <p className="mt-1 text-xs text-muted">
+          <span className={bullish ? "text-buy" : "text-sell"}>{bias}%</span> {bullish ? "bullish" : "bearish"} on EUR/USD
         </p>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-bg-subtle">
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-bg-subtle">
           <div className={`h-full ${bullish ? "bg-buy" : "bg-sell"}`} style={{ width: `${bias}%` }} />
         </div>
       </section>
@@ -183,8 +181,8 @@ export function HomeScreen() {
 
 function StoryBubble({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-16 flex-col items-center gap-2">
-      <span className="flex size-16 items-center justify-center rounded-full border border-border bg-bg-subtle text-sm font-medium">
+    <button type="button" onClick={onClick} className="flex w-12 flex-col items-center gap-1">
+      <span className="flex size-11 items-center justify-center rounded-full border border-border text-[11px] font-medium">
         {label.slice(0, 1)}
       </span>
       <span className="text-[10px] text-muted">{label}</span>
@@ -192,25 +190,23 @@ function StoryBubble({ label, onClick }: { label: string; onClick: () => void })
   );
 }
 
-function PairCard({ inst }: { inst: Instrument }) {
+function PairRow({ inst }: { inst: Instrument }) {
   const q = market.getQuote(inst.symbol);
   const up = q.changePct >= 0;
   return (
-    <article className="rounded-2xl border border-border bg-bg-elevated p-3">
-      <Link to="/trade" search={{ symbol: inst.symbol }}>
-        <p className="text-sm font-medium">{inst.display}</p>
-        <p className="mt-1 num text-lg">{formatPrice(q.mid, inst.digits)}</p>
-        <p className={up ? "text-xs text-buy" : "text-xs text-sell"}>{formatPct(q.changePct)}</p>
+    <div className="flex items-center gap-3 py-3">
+      <Link to="/trade" search={{ symbol: inst.symbol }} className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{inst.display}</p>
+        <p className={`text-xs ${up ? "text-buy" : "text-sell"}`}>{formatPct(q.changePct)}</p>
       </Link>
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
-        <Link to="/trade" search={{ symbol: inst.symbol, side: "buy" }} className="flex h-10 items-center justify-center rounded-xl bg-[#00b386] text-xs font-semibold text-white">
-          BUY
-        </Link>
-        <Link to="/trade" search={{ symbol: inst.symbol, side: "sell" }} className="flex h-10 items-center justify-center rounded-xl bg-[#eb5b3c] text-xs font-semibold text-white">
-          SELL
-        </Link>
-      </div>
-    </article>
+      <p className="num text-sm font-medium">{formatPrice(q.mid, inst.digits)}</p>
+      <Link to="/trade" search={{ symbol: inst.symbol, side: "buy" }} className="flex h-7 w-12 items-center justify-center rounded-md bg-[#00b386] text-[11px] font-semibold text-white">
+        Buy
+      </Link>
+      <Link to="/trade" search={{ symbol: inst.symbol, side: "sell" }} className="flex h-7 w-12 items-center justify-center rounded-md bg-[#eb5b3c] text-[11px] font-semibold text-white">
+        Sell
+      </Link>
+    </div>
   );
 }
 
