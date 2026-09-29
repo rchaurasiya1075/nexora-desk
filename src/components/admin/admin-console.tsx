@@ -42,6 +42,7 @@ import {
 import { directoryError } from "@/lib/ops/directory";
 import { firestoreDirectoryError } from "@/lib/ops/api";
 import type { DepositRequest, DeskUser } from "@/lib/ops/types";
+import { EMPTY_PAY, replyToUser, savePayDesk, watchPayDesk, watchThreads, type ChatThread, type PayDesk } from "@/lib/ops/p2p";
 import { formatMoney } from "@/lib/utils";
 
 type Section =
@@ -57,6 +58,7 @@ type Section =
   | "ledger"
   | "audit"
   | "support"
+  | "payments"
   | "staff"
   | "settings";
 
@@ -72,7 +74,8 @@ const NAV: { id: Section; label: string }[] = [
   { id: "markets", label: "Markets" },
   { id: "ledger", label: "Transactions" },
   { id: "audit", label: "Audit logs" },
-  { id: "support", label: "Support" },
+  { id: "support", label: "P2P chat" },
+  { id: "payments", label: "Payment details" },
   { id: "staff", label: "Admin accounts" },
   { id: "settings", label: "Settings" },
 ];
@@ -289,9 +292,8 @@ export function AdminConsole() {
           {section === "markets" && <MarketsPane adminName={adminName} pins={control.pins} />}
           {section === "ledger" && <LedgerPane rows={ledger} />}
           {section === "audit" && <AuditPane rows={control.audit} />}
-          {section === "support" && (
-            <SupportPane notes={control.support} adminName={adminName} />
-          )}
+          {section === "support" && <P2pPane />}
+          {section === "payments" && <PaymentsPane />}
           {section === "staff" && <StaffPane users={users} adminName={adminName} onDone={bump} />}
           {section === "settings" && (
             <SettingsPane settings={control.settings} adminName={adminName} />
@@ -1020,6 +1022,98 @@ function AuditPane({ rows }: { rows: ReturnType<typeof readControl>["audit"] }) 
       <p className="mt-2 text-sm text-muted">These rows are append-only in the desk. There is no delete control.</p>
       <LogList rows={rows} />
     </div>
+  );
+}
+
+function P2pPane() {
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [open, setOpen] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  useEffect(() => watchThreads(setThreads), []);
+  const thread = threads.find((row) => row.userId === open) || threads[0];
+
+  return (
+    <div>
+      <h1 className="font-display text-3xl">P2P chat</h1>
+      <p className="mt-2 text-sm text-muted">Customer messages from the deposit screen show up here. Reply and they see it on their phone.</p>
+      <div className="mt-4 grid gap-4 md:grid-cols-[220px_1fr]">
+        <ul className="space-y-2 text-sm">
+          {threads.map((row) => (
+            <li key={row.userId}>
+              <button type="button" className={`w-full rounded-lg px-3 py-2 text-left ${thread?.userId === row.userId ? "bg-white/10" : ""}`} onClick={() => setOpen(row.userId)}>
+                <span className="block">{row.name}</span>
+                <span className="text-xs text-muted">{row.email || row.userId}</span>
+              </button>
+            </li>
+          ))}
+          {!threads.length && <li className="text-muted">No customer chats yet.</li>}
+        </ul>
+        {thread && (
+          <div>
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {thread.lines.map((line) => (
+                <p key={line.id} className="rounded-lg bg-white/5 px-3 py-2 text-sm">
+                  <span className="text-[10px] uppercase text-muted">{line.from === "admin" ? "You" : thread.name}</span>
+                  <span className="mt-1 block">{line.text}</span>
+                </p>
+              ))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Input value={text} placeholder="Reply to the customer" onChange={(e) => setText(e.target.value)} />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const msg = text;
+                  setText("");
+                  void replyToUser(thread.userId, msg).catch((err) => toast.error(err instanceof Error ? err.message : "Reply failed"));
+                }}
+              >
+                Send
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PaymentsPane() {
+  const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => watchPayDesk(setPay), []);
+
+  function set<K extends keyof PayDesk>(key: K, value: string) {
+    setPay((row) => ({ ...row, [key]: value }));
+  }
+
+  return (
+    <form
+      className="max-w-lg"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setBusy(true);
+        void savePayDesk(pay)
+          .then(() => toast.success("Payment details saved. Customers see them on deposit."))
+          .catch((err) => toast.error(err instanceof Error ? err.message : "Could not save."))
+          .finally(() => setBusy(false));
+      }}
+    >
+      <h1 className="font-display text-3xl">Payment details</h1>
+      <p className="mt-2 text-sm text-muted">These replace the deposit account name, number, UPI, and crypto address for every customer.</p>
+      <div className="mt-4 grid gap-2">
+        <Input value={pay.holder} placeholder="Account holder name" onChange={(e) => set("holder", e.target.value)} />
+        <Input value={pay.bank} placeholder="Bank name" onChange={(e) => set("bank", e.target.value)} />
+        <Input value={pay.number} placeholder="Account number" onChange={(e) => set("number", e.target.value)} />
+        <Input value={pay.ifsc} placeholder="IFSC" onChange={(e) => set("ifsc", e.target.value)} />
+        <Input value={pay.upi} placeholder="UPI id" onChange={(e) => set("upi", e.target.value)} />
+        <Input value={pay.cryptoAsset} placeholder="Crypto asset, USDT" onChange={(e) => set("cryptoAsset", e.target.value)} />
+        <Input value={pay.cryptoNetwork} placeholder="Network, TRC-20" onChange={(e) => set("cryptoNetwork", e.target.value)} />
+        <Input value={pay.cryptoAddress} placeholder="Crypto deposit address" onChange={(e) => set("cryptoAddress", e.target.value)} />
+        <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save payment details"}</Button>
+      </div>
+    </form>
   );
 }
 

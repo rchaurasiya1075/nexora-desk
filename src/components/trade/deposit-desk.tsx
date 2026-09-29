@@ -11,7 +11,9 @@ import {
   listMyDeposits,
   listPaymentMethods,
 } from "@/lib/ops/api";
-import { builtinCurrencies, builtinMethods, DESK_BANK, DESK_CRYPTO } from "@/lib/ops/rails";
+import { builtinCurrencies, builtinMethods } from "@/lib/ops/rails";
+import { EMPTY_PAY, sendUserLine, watchMyThread, watchPayDesk, type ChatLine, type PayDesk } from "@/lib/ops/p2p";
+import { useDeskSession } from "@/lib/firebase/session";
 import { formatAmount, toUsd, upiUri } from "@/lib/ops/money";
 import type { CurrencyRow, DepositRequest, PaymentMethod } from "@/lib/ops/types";
 import { useTradeStore } from "@/lib/trading/store";
@@ -39,6 +41,7 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
 
   async function reload() {
     const [c, m, r] = await Promise.all([
@@ -53,6 +56,8 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
     const approved = r.find((row) => row.status === "approved");
     if (approved) void hydrateFromServer();
   }
+
+  useEffect(() => watchPayDesk(setPay), []);
 
   useEffect(() => {
     void reload().catch(() => {
@@ -149,13 +154,14 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
       <div className="mt-4 rounded-xl bg-bg-subtle p-4 text-sm">
         <p className="text-[11px] uppercase tracking-wide text-subtle">Bank</p>
         <p className="mt-2">Account holder name</p>
-        <p className="font-medium">{DESK_BANK.holder}</p>
+        <p className="font-medium">{pay.holder}</p>
         <p className="mt-2">Account number</p>
-        <p className="font-medium">{DESK_BANK.number}</p>
-        <p className="mt-1 text-muted">{DESK_BANK.bank} · {DESK_BANK.ifsc}</p>
-        <p className="mt-4 text-[11px] uppercase tracking-wide text-subtle">Crypto deposit · {DESK_CRYPTO.asset}</p>
-        <p className="mt-2 font-medium break-all">{DESK_CRYPTO.address}</p>
-        <p className="text-muted">{DESK_CRYPTO.network} only</p>
+        <p className="font-medium">{pay.number}</p>
+        <p className="mt-1 text-muted">{pay.bank} · {pay.ifsc}</p>
+        {pay.upi && <p className="mt-1 text-muted">UPI {pay.upi}</p>}
+        <p className="mt-4 text-[11px] uppercase tracking-wide text-subtle">Crypto deposit · {pay.cryptoAsset}</p>
+        <p className="mt-2 font-medium break-all">{pay.cryptoAddress}</p>
+        <p className="text-muted">{pay.cryptoNetwork} only</p>
       </div>
 
       <div className="mt-4 grid gap-2">
@@ -320,31 +326,23 @@ function withCrypto(rows: PaymentMethod[]) {
 }
 
 function P2pChat() {
+  const { user } = useDeskSession();
   const [text, setText] = useState("");
-  const [lines, setLines] = useState<{ from: "you" | "agent"; text: string }[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = JSON.parse(localStorage.getItem("sikkaaa.p2p.chat") || "[]") as { from: "you" | "agent"; text: string }[];
-      return Array.isArray(saved) ? saved.slice(-30) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [lines, setLines] = useState<ChatLine[]>([]);
+  const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
 
-  function push(next: { from: "you" | "agent"; text: string }[]) {
-    const kept = next.slice(-30);
-    setLines(kept);
-    localStorage.setItem("sikkaaa.p2p.chat", JSON.stringify(kept));
-  }
+  useEffect(() => watchPayDesk(setPay), []);
+  useEffect(() => watchMyThread(setLines), []);
 
-  function send() {
+  async function send() {
     const msg = text.trim();
-    if (msg.length < 1) return;
-    const reply = /[0-9]{6,}/.test(msg)
-      ? "UTR received. The P2P agent will match it and an admin will credit the account."
-      : `Send the amount to ${DESK_BANK.holder}, account ${DESK_BANK.number}, ${DESK_BANK.bank}. Crypto deposit: ${DESK_CRYPTO.asset} ${DESK_CRYPTO.network} ${DESK_CRYPTO.address}. Then paste the UTR or tx hash here.`;
-    push([...lines, { from: "you", text: msg }, { from: "agent", text: reply }]);
+    if (!msg || !user) return;
     setText("");
+    try {
+      await sendUserLine({ name: user.name, email: user.email, userId: user.id, text: msg });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Message was not sent.");
+    }
   }
 
   return (
@@ -353,18 +351,20 @@ function P2pChat() {
       <h3 className="mt-1 text-lg font-medium">Chat with P2P agent</h3>
       <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
         {lines.length === 0 && (
-          <p className="text-sm text-muted">Ask for the account name, account number, or the crypto address. Paste your UTR here after you pay.</p>
+          <p className="text-sm text-muted">
+            Pay {pay.holder}, account {pay.number}. Crypto {pay.cryptoAsset} {pay.cryptoNetwork}: {pay.cryptoAddress}. Then send the UTR here. The admin sees this chat.
+          </p>
         )}
-        {lines.map((line, i) => (
-          <p key={i} className={`rounded-xl px-3 py-2 text-sm ${line.from === "you" ? "bg-white/10" : "bg-bg-subtle text-muted"}`}>
-            <span className="block text-[10px] uppercase tracking-wide">{line.from === "you" ? "You" : "P2P agent"}</span>
+        {lines.map((line) => (
+          <p key={line.id || line.text} className={`rounded-xl px-3 py-2 text-sm ${line.from === "user" ? "bg-white/10" : "bg-bg-subtle text-muted"}`}>
+            <span className="block text-[10px] uppercase tracking-wide">{line.from === "user" ? "You" : "Admin"}</span>
             {line.text}
           </p>
         ))}
       </div>
       <div className="mt-3 flex gap-2">
-        <Input value={text} placeholder="Message the agent" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
-        <Button type="button" variant="outline" onClick={send}>Send</Button>
+        <Input value={text} placeholder="Message the admin" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void send(); }} />
+        <Button type="button" variant="outline" onClick={() => void send()}>Send</Button>
       </div>
     </section>
   );

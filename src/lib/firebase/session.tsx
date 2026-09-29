@@ -82,6 +82,10 @@ const Ctx = createContext<
 
 let holdAuth = false;
 
+export function setAuthHold(next: boolean) {
+  holdAuth = next;
+}
+
 function toUser(u: User): DeskSessionUser {
   return {
     id: u.uid,
@@ -106,6 +110,14 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     void ensureAuthPersistence().then(() => {
       unsub = onAuthStateChanged(firebaseAuth, (next) => {
         if (holdAuth) {
+          setPending(false);
+          return;
+        }
+        if (next?.isAnonymous && getSessionUser()) {
+          const paper = getSessionUser()!;
+          setAuthMode("local");
+          setLocal(true);
+          setUser(fromLocal(paper));
           setPending(false);
           return;
         }
