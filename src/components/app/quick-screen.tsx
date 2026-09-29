@@ -97,7 +97,8 @@ export function QuickScreen() {
   }
 
   return (
-    <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-1 md:mb-0 md:h-[calc(100dvh-4rem)]">
+    <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-1 md:mb-0 lg:h-[calc(100dvh-2rem)] lg:flex-row lg:gap-5 lg:px-6 lg:pt-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[11px] uppercase tracking-wide text-subtle">{user?.name || "Trader"} · {inst.display}</p>
@@ -125,6 +126,8 @@ export function QuickScreen() {
       <div className="relative mt-2 min-h-[240px] flex-1 overflow-hidden rounded-xl border border-white/10">
         <QuickLiveChart symbol={focus} entry={live?.entry} />
       </div>
+      </div>
+      <div className="lg:flex lg:w-[340px] lg:shrink-0 lg:flex-col lg:justify-center lg:rounded-2xl lg:border lg:border-border lg:p-4">
       <div className="mt-2 flex gap-1.5">
         {TIMES.filter((item) => item.id <= cap).map((item) => (
           <button key={item.id} type="button" disabled={!!live} onClick={() => setSeconds(item.id)} className={`h-8 flex-1 rounded-full text-xs disabled:opacity-40 ${seconds === item.id ? "bg-fg text-bg" : "bg-bg-subtle text-muted"}`}>
@@ -167,6 +170,7 @@ export function QuickScreen() {
         })}
         {closed.length === 0 && <li className="text-muted">Finished trades stay here. The result does not move.</li>}
       </ul>
+      </div>
     </div>
   );
 }

@@ -138,7 +138,8 @@ export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?:
   }
 
   return (
-    <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-2 md:mb-0 md:h-[calc(100dvh-4rem)] md:px-4">
+    <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-2 md:mb-0 lg:h-[calc(100dvh-2rem)] lg:flex-row lg:gap-5 lg:px-6 lg:pt-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <select
@@ -196,8 +197,9 @@ export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?:
         )}
         <TradingViewChart symbol={selected} interval="1" />
       </div>
+      </div>
 
-      <section className="shrink-0 space-y-2 pt-2">
+      <section className="shrink-0 space-y-2 pt-2 lg:w-[340px] lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-border lg:p-4">
         {kind !== "market" && (
           <input
             inputMode="decimal"

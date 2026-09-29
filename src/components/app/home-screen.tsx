@@ -53,9 +53,12 @@ export function HomeScreen() {
     .slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-6 pt-3">
+    <div className="mx-auto max-w-lg px-4 pb-6 pt-3 lg:max-w-6xl lg:px-8 lg:pt-6">
       <header className="flex items-center justify-between">
-        <Logo compact />
+        <span className="lg:hidden">
+          <Logo compact />
+        </span>
+        <p className="hidden text-sm text-muted lg:block">Home</p>
         <div className="flex items-center gap-1.5">
           <CurrencyToggle />
           <Link to="/markets" className="flex size-8 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
@@ -70,6 +73,8 @@ export function HomeScreen() {
         </div>
       </header>
 
+      <div className="flex flex-col lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start lg:gap-10">
+      <div>
       <section className="mt-5">
         <p className="text-[11px] text-subtle">Main balance</p>
         <p className="mt-1 text-[28px] font-semibold leading-none tracking-tight">{showMoney(balance, ccy)}</p>
@@ -104,7 +109,10 @@ export function HomeScreen() {
         <StoryBubble label="Gold" onClick={() => setStory("gold")} />
       </div>
 
-      <h2 className="mt-7 text-[13px] font-medium">Watchlist</h2>
+      </div>
+
+      <div className="lg:rounded-2xl lg:border lg:border-border lg:p-5">
+      <h2 className="mt-7 text-[13px] font-medium lg:mt-0">Watchlist</h2>
       <div className="mt-3 flex gap-2 overflow-x-auto">
         {(
           [
@@ -140,6 +148,8 @@ export function HomeScreen() {
           <div className={`h-full ${bullish ? "bg-buy" : "bg-sell"}`} style={{ width: `${bias}%` }} />
         </div>
       </section>
+      </div>
+      </div>
 
       {story && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/70 p-4 md:items-center md:justify-center" onClick={() => setStory(null)}>

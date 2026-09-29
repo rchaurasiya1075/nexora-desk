@@ -22,7 +22,7 @@ export function PositionsScreen() {
   }, 0);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="mx-auto max-w-3xl px-4 py-6 lg:max-w-5xl lg:px-8">
       <h1 className="text-3xl font-medium">Positions</h1>
       {positions.length > 0 && (
         <p className={`mt-2 text-sm ${floating >= 0 ? "text-buy" : "text-sell"}`}>

@@ -60,10 +60,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-dvh bg-bg text-fg md:pl-56">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-border bg-bg px-3 py-5 md:flex">
+    <div className="min-h-dvh bg-bg text-fg lg:pl-60">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-bg px-3 py-5 lg:flex">
         <Logo />
-        <p className="mt-1 px-3 text-[11px] tracking-[0.08em] text-subtle">Trade smarter</p>
+        <p className="mt-1 px-3 text-[11px] text-subtle">Trade smarter. Move faster.</p>
         <nav className="mt-8 flex flex-col gap-1">
           {NAV.map((item) => {
             const Icon = item.icon;
@@ -74,40 +74,43 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 search={item.search}
                 className={cn(
-                  "flex h-11 items-center gap-3 rounded-lg px-3 text-sm",
-                  on ? "bg-bg-subtle text-fg" : "text-muted hover:text-fg",
+                  "flex h-11 items-center gap-3 rounded-xl px-3 text-sm",
+                  on ? "bg-[#00b386] text-white" : "text-muted hover:bg-bg-subtle hover:text-fg",
                 )}
               >
                 <Icon className="size-4" />
                 {item.label}
                 {item.key === "positions" && openCount > 0 && (
-                  <span className="ml-auto rounded-full bg-white/10 px-1.5 text-[11px] text-fg">{openCount}</span>
+                  <span className={cn("ml-auto rounded-full px-1.5 text-[11px]", on ? "bg-white/20" : "bg-bg-subtle")}>{openCount}</span>
                 )}
               </Link>
             );
           })}
         </nav>
-        {user && (
-          <button type="button" className="mt-auto px-3 text-left text-sm text-muted hover:text-fg" onClick={() => void signOutDesk()}>
-            Log out
-          </button>
-        )}
+        <div className="mt-auto px-3">
+          {user && <p className="truncate text-sm font-medium">{user.name || user.email}</p>}
+          {user && (
+            <button type="button" className="mt-2 text-left text-sm text-muted hover:text-fg" onClick={() => void signOutDesk()}>
+              Log out
+            </button>
+          )}
+        </div>
       </aside>
 
       {pathname !== "/" && (
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 backdrop-blur md:hidden">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-bg/90 px-4 backdrop-blur lg:hidden">
           <Logo />
           <CurrencyToggle />
         </header>
       )}
 
-      <main className="pb-28 md:pb-8">
+      <main className="pb-28 lg:pb-8">
         <div key={`${pathname}:${view ?? "trade"}`} className="screen-in">
           {children}
         </div>
       </main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-30 md:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-30 lg:hidden">
         <ul className="grid grid-cols-5 rounded-2xl border border-border bg-bg-elevated px-1 py-1 shadow-[0_8px_30px_rgba(16,24,40,0.08)]">
           {NAV.map((item) => {
             const Icon = item.icon;
