@@ -19,6 +19,13 @@ export type PayDesk = {
   cryptoAsset: string;
   cryptoNetwork: string;
   cryptoAddress: string;
+  upiQr: string;
+  cryptoQr: string;
+  cryptoLink: string;
+  footer: string;
+  eventTitle: string;
+  eventText: string;
+  eventImage: string;
 };
 
 export type ChatLine = {
@@ -44,6 +51,13 @@ export const EMPTY_PAY: PayDesk = {
   cryptoAsset: DESK_CRYPTO.asset,
   cryptoNetwork: DESK_CRYPTO.network,
   cryptoAddress: DESK_CRYPTO.address,
+  upiQr: "",
+  cryptoQr: "",
+  cryptoLink: "",
+  footer: "",
+  eventTitle: "",
+  eventText: "",
+  eventImage: "",
 };
 
 function asPay(raw: unknown): PayDesk | null {
@@ -59,6 +73,13 @@ function asPay(raw: unknown): PayDesk | null {
     cryptoAsset: String(row.cryptoAsset || EMPTY_PAY.cryptoAsset),
     cryptoNetwork: String(row.cryptoNetwork || EMPTY_PAY.cryptoNetwork),
     cryptoAddress: String(row.cryptoAddress || EMPTY_PAY.cryptoAddress),
+    upiQr: String(row.upiQr || ""),
+    cryptoQr: String(row.cryptoQr || ""),
+    cryptoLink: String(row.cryptoLink || ""),
+    footer: String(row.footer || ""),
+    eventTitle: String(row.eventTitle || ""),
+    eventText: String(row.eventText || ""),
+    eventImage: String(row.eventImage || ""),
   };
 }
 
@@ -78,7 +99,7 @@ function asLines(raw: unknown): ChatLine[] {
     .filter((row): row is ChatLine => !!row);
 }
 
-async function writer() {
+export async function writer() {
   if (firebaseAuth.currentUser) return firebaseAuth.currentUser;
   setAuthHold(true);
   try {

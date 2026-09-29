@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 
 const MODES = [
-  { id: "forex", label: "Forex" },
   { id: "quick", label: "Quick" },
+  { id: "swing", label: "Swing" },
+  { id: "forex", label: "Forex" },
   { id: "copy", label: "Copy" },
   { id: "options", label: "Options" },
 ] as const;

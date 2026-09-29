@@ -43,6 +43,7 @@ import { directoryError } from "@/lib/ops/directory";
 import { firestoreDirectoryError } from "@/lib/ops/api";
 import type { DepositRequest, DeskUser } from "@/lib/ops/types";
 import { EMPTY_PAY, replyToUser, savePayDesk, watchPayDesk, watchThreads, type ChatThread, type PayDesk } from "@/lib/ops/p2p";
+import { decideKyc, payReferral, setTradeForce, watchKycQueue, watchLive, type KycRow, type LiveRow } from "@/lib/ops/live-desk";
 import { formatMoney } from "@/lib/utils";
 
 type Section =
@@ -59,6 +60,9 @@ type Section =
   | "audit"
   | "support"
   | "payments"
+  | "live"
+  | "kyc"
+  | "site"
   | "staff"
   | "settings";
 
@@ -76,6 +80,9 @@ const NAV: { id: Section; label: string }[] = [
   { id: "audit", label: "Audit logs" },
   { id: "support", label: "P2P chat" },
   { id: "payments", label: "Payment details" },
+  { id: "live", label: "User Trade Live" },
+  { id: "kyc", label: "KYC" },
+  { id: "site", label: "Footer & events" },
   { id: "staff", label: "Admin accounts" },
   { id: "settings", label: "Settings" },
 ];
@@ -294,6 +301,9 @@ export function AdminConsole() {
           {section === "audit" && <AuditPane rows={control.audit} />}
           {section === "support" && <P2pPane />}
           {section === "payments" && <PaymentsPane />}
+          {section === "live" && <LiveTradesPane />}
+          {section === "kyc" && <KycPane />}
+          {section === "site" && <SitePane />}
           {section === "staff" && <StaffPane users={users} adminName={adminName} onDone={bump} />}
           {section === "settings" && (
             <SettingsPane settings={control.settings} adminName={adminName} />
@@ -518,6 +528,7 @@ function DepositsPane({
                       })
                         .then(() => {
                           audit(adminName, "DEPOSIT_APPROVE", d.userId, `$${credit}`);
+                          void payReferral(d.userId, credit).catch(() => undefined);
                           toast.success(`Added ${formatMoney(credit)} to the user.`);
                           onDone();
                         })
@@ -1079,6 +1090,118 @@ function P2pPane() {
   );
 }
 
+function LiveTradesPane() {
+  const [rows, setRows] = useState<LiveRow[]>([]);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  useEffect(() => watchLive(setRows), []);
+  return (
+    <div>
+      <h1 className="font-display text-3xl">User Trade Live</h1>
+      <p className="mt-2 text-sm text-muted">See who is in a trade. Type a dollar amount, for example -100 for a $100 loss or 100 for a $100 profit. It settles that trade.</p>
+      <ul className="mt-4 space-y-3">
+        {rows.map((row) => (
+          <li key={row.uid + row.trade.id} className="rounded-lg border border-white/10 p-3 text-sm">
+            <p className="font-medium">{row.name} · {row.email}</p>
+            <p className="text-muted">{row.trade.kind} {row.trade.symbol} {row.trade.side} · stake ${row.trade.stake.toFixed(2)} · entry {row.trade.entry}</p>
+            <div className="mt-2 flex gap-2">
+              <Input
+                placeholder="-100 loss or 100 profit"
+                value={amounts[row.trade.id] ?? ""}
+                onChange={(e) => setAmounts((prev) => ({ ...prev, [row.trade.id]: e.target.value }))}
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  const usd = Number(amounts[row.trade.id]);
+                  if (!Number.isFinite(usd)) {
+                    toast.error("Enter the profit or loss amount.");
+                    return;
+                  }
+                  void setTradeForce(row.uid, row.trade.id, usd)
+                    .then(() => toast.success(usd >= 0 ? `Profit $${usd} set` : `Loss $${usd} set`))
+                    .catch((err) => toast.error(err instanceof Error ? err.message : "Could not set the result"));
+                }}
+              >
+                Set result
+              </Button>
+            </div>
+          </li>
+        ))}
+        {!rows.length && <li className="text-muted">No live trades right now.</li>}
+      </ul>
+    </div>
+  );
+}
+
+function KycPane() {
+  const [rows, setRows] = useState<KycRow[]>([]);
+  useEffect(() => watchKycQueue(setRows), []);
+  return (
+    <div>
+      <h1 className="font-display text-3xl">KYC</h1>
+      <ul className="mt-4 space-y-3 text-sm">
+        {rows.map((row) => (
+          <li key={row.uid} className="rounded-lg border border-white/10 p-3">
+            <p>{row.name} · {row.email}</p>
+            <p className={row.status === "verified" ? "text-buy" : "text-sell"}>{row.status === "verified" ? "KYC Successful" : "KYC not done"}</p>
+            <p className="text-muted">{row.phone} · ID {row.idLast4}</p>
+            <div className="mt-2 flex gap-2">
+              <Button type="button" onClick={() => void decideKyc(row.uid, "verified").then(() => toast.success("KYC approved"))}>Approve</Button>
+              <Button type="button" variant="outline" onClick={() => void decideKyc(row.uid, "unverified")}>Reject</Button>
+            </div>
+          </li>
+        ))}
+        {!rows.length && <li className="text-muted">No KYC submissions yet.</li>}
+      </ul>
+    </div>
+  );
+}
+
+function SitePane() {
+  const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => watchPayDesk(setPay), []);
+  return (
+    <form
+      className="max-w-lg"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setBusy(true);
+        void savePayDesk(pay)
+          .then(() => toast.success("Footer and event saved."))
+          .catch((err) => toast.error(err instanceof Error ? err.message : "Could not save."))
+          .finally(() => setBusy(false));
+      }}
+    >
+      <h1 className="font-display text-3xl">Footer and daily event</h1>
+      <p className="mt-2 text-sm text-muted">This text and photo show on the site. Paste an image URL for the daily event.</p>
+      <div className="mt-4 grid gap-2">
+        <textarea className="min-h-24 rounded-lg border border-white/10 bg-transparent p-3 text-sm" placeholder="Footer text" value={pay.footer} onChange={(e) => setPay({ ...pay, footer: e.target.value })} />
+        <Input placeholder="Event title" value={pay.eventTitle} onChange={(e) => setPay({ ...pay, eventTitle: e.target.value })} />
+        <Input placeholder="Event text" value={pay.eventText} onChange={(e) => setPay({ ...pay, eventText: e.target.value })} />
+        <Input placeholder="Event photo URL" value={pay.eventImage} onChange={(e) => setPay({ ...pay, eventImage: e.target.value })} />
+        <input
+          type="file"
+          accept="image/*"
+          className="text-sm"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            if (file.size > 180000) {
+              toast.error("Photo must be under 180KB, or paste an image URL.");
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => setPay((row) => ({ ...row, eventImage: String(reader.result || "") }));
+            reader.readAsDataURL(file);
+          }}
+        />
+        <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save site content"}</Button>
+      </div>
+    </form>
+  );
+}
+
 function PaymentsPane() {
   const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
   const [busy, setBusy] = useState(false);
@@ -1111,6 +1234,9 @@ function PaymentsPane() {
         <Input value={pay.cryptoAsset} placeholder="Crypto asset, USDT" onChange={(e) => set("cryptoAsset", e.target.value)} />
         <Input value={pay.cryptoNetwork} placeholder="Network, TRC-20" onChange={(e) => set("cryptoNetwork", e.target.value)} />
         <Input value={pay.cryptoAddress} placeholder="Crypto deposit address" onChange={(e) => set("cryptoAddress", e.target.value)} />
+        <Input value={pay.cryptoLink} placeholder="Crypto payment link" onChange={(e) => set("cryptoLink", e.target.value)} />
+        <Input value={pay.upiQr} placeholder="UPI QR image URL" onChange={(e) => set("upiQr", e.target.value)} />
+        <Input value={pay.cryptoQr} placeholder="Crypto QR image URL" onChange={(e) => set("cryptoQr", e.target.value)} />
         <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save payment details"}</Button>
       </div>
     </form>

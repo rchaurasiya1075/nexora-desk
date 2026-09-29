@@ -5,18 +5,23 @@ import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
 import { inrPerUsd, showFrozen, showMoney, useDisplayCcy } from "@/lib/money/display-ccy";
-import { openQuickBet, payoutRate, quickBets, settleQuick, subscribeQuick, type QuickSide } from "@/lib/trading/quick";
+import { useDeskSession } from "@/lib/firebase/session";
+import { publishLive, watchMyForce } from "@/lib/ops/live-desk";
+import { maxQuickSeconds, openQuickBet, payoutRate, quickBets, settleQuick, subscribeQuick, type QuickSide } from "@/lib/trading/quick";
 import { useTradeStore } from "@/lib/trading/store";
 import { formatPrice } from "@/lib/utils";
 
 const TIMES = [
   { id: 30, label: "30s" },
-  { id: 60, label: "1m" },
-  { id: 300, label: "5m" },
+  { id: 60, label: "60s" },
+  { id: 90, label: "90s" },
+  { id: 120, label: "120s" },
+  { id: 240, label: "240s" },
 ];
 
 export function QuickScreen() {
   useMarketTick();
+  const { user } = useDeskSession();
   const ccy = useDisplayCcy();
   const rate = inrPerUsd();
   const selected = useTradeStore((s) => s.selected);
@@ -40,16 +45,45 @@ export function QuickScreen() {
   const focus = live?.symbol ?? selected;
   const inst = getInstrument(focus);
   const quote = market.getQuote(focus);
+  const cap = maxQuickSeconds(balance);
+  useEffect(() => watchMyForce(), []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!live) {
+      void publishLive({ name: user.name, email: user.email, deskUserId: user.id, trade: null });
+      return;
+    }
+    void publishLive({
+      name: user.name,
+      email: user.email,
+      deskUserId: user.id,
+      trade: {
+        id: live.id,
+        kind: "quick",
+        symbol: live.symbol,
+        side: live.side,
+        stake: live.stake,
+        entry: live.entry,
+        expiry: live.expiry,
+      },
+    });
+  }, [live, user]);
+
+  useEffect(() => {
+    if (seconds > cap) setSeconds(cap);
+  }, [cap, seconds]);
 
   if (!quote) return <p className="p-4 text-sm text-muted">Waiting for the price.</p>;
 
   const typed = Number(amount);
   const stake = ccy === "INR" ? (Number.isFinite(typed) ? typed / rate : 0) : typed;
-  const rateBack = payoutRate(focus);
+  const rateBack = payoutRate(seconds);
   const back = stake * (1 + rateBack);
   const step = ccy === "INR" ? 100 : 5;
-  const above = live ? quote.mid > live.entry : false;
-  const winning = live ? (live.side === "call" ? quote.mid > live.entry : quote.mid < live.entry) : false;
+  const gap = live ? quote.mid - live.entry : 0;
+  const flat = live ? gap === 0 : false;
+  const winning = live ? (live.side === "call" ? gap > 0 : gap < 0) : false;
   const left = live ? Math.max(0, Math.ceil((live.expiry - now) / 1000)) : 0;
 
   function go(side: QuickSide) {
@@ -66,7 +100,7 @@ export function QuickScreen() {
     <div className="-mb-28 flex h-[calc(100dvh-11rem)] flex-col px-3 pt-1 md:mb-0 md:h-[calc(100dvh-4rem)]">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-subtle">This trade · {inst.display}</p>
+          <p className="text-[11px] uppercase tracking-wide text-subtle">{user?.name || "Trader"} · {inst.display}</p>
           <p className="num text-2xl font-medium leading-none">{formatPrice(quote.mid, inst.digits)}</p>
         </div>
         <div className="text-right text-xs">
@@ -85,14 +119,14 @@ export function QuickScreen() {
       )}
       {live && (
         <p className={`text-sm ${winning ? "text-buy" : "text-sell"}`}>
-          {live.side === "call" ? "Higher" : "Lower"} · entry {formatPrice(live.entry, inst.digits)} · price is {above ? "above" : "below"} · {winning ? "winning" : "losing"} · {left}s · stake {showFrozen(live.stake, ccy, live.fx).replace(/^\+/, "")} locked
+          {live.side === "call" ? "Higher" : "Lower"} · entry {formatPrice(live.entry, inst.digits)} · {flat ? "at entry" : `price is ${gap > 0 ? "above" : "below"}`} · {flat ? "open" : winning ? "in profit" : "in loss"} · {left}s
         </p>
       )}
       <div className="relative mt-2 min-h-[240px] flex-1 overflow-hidden rounded-xl border border-white/10">
         <QuickLiveChart symbol={focus} entry={live?.entry} />
       </div>
       <div className="mt-2 flex gap-1.5">
-        {TIMES.map((item) => (
+        {TIMES.filter((item) => item.id <= cap).map((item) => (
           <button key={item.id} type="button" disabled={!!live} onClick={() => setSeconds(item.id)} className={`h-8 flex-1 rounded-full text-xs disabled:opacity-40 ${seconds === item.id ? "bg-white text-[#111214]" : "bg-white/10 text-muted"}`}>
             {item.label}
           </button>
@@ -106,7 +140,7 @@ export function QuickScreen() {
         </div>
         <button type="button" className="h-10 w-10 rounded-full bg-white/10" disabled={!!live} onClick={() => setAmount(String((Number(amount) || 0) + step))}>+</button>
       </div>
-      <p className="mt-1 text-center text-xs text-muted">{live ? "Stake is locked until this trade ends." : `If win ${showMoney(back, ccy)}`}</p>
+      <p className="mt-1 text-center text-xs text-muted">{live ? "This trade is running on the chart. Stake stays locked until it settles." : `If win ${showMoney(back, ccy)} · your balance unlocks ${cap}s`}</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button type="button" disabled={!!live} onClick={() => go("call")} className="h-12 rounded-full bg-[#d8f3e4] text-sm font-semibold text-[#146c43] disabled:opacity-40">
           Higher

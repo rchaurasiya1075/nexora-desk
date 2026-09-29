@@ -130,6 +130,7 @@ type TradeState = BookSlice & {
     leverage?: number;
   }) => { ok: true; id: string } | { ok: false; error: string };
   closePosition: (id: string, lots?: number) => { ok: true } | { ok: false; error: string };
+  forceResult: (id: string, pnlUsd: number) => { ok: boolean };
   updateSlTp: (id: string, sl: number | null, tp: number | null) => void;
   cancelPending: (id: string) => void;
   oneClick: boolean;
@@ -399,6 +400,33 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
           : get().positions.filter((p) => p.id !== id),
       history: [row, ...get().history].slice(0, 80),
       lastToast: `Closed ${closeLots} ${inst.display}  P/L ${pnl - commission >= 0 ? "+" : ""}${(pnl - commission).toFixed(2)}`,
+    });
+    scheduleSave();
+    return { ok: true };
+  },
+  forceResult: (id, pnlUsd) => {
+    const pos = get().positions.find((p) => p.id === id);
+    if (!pos) return { ok: false };
+    const q = market.getQuote(pos.symbol);
+    const row: HistoryRow = {
+      id: uid(),
+      symbol: pos.symbol,
+      side: pos.side,
+      lots: pos.lots,
+      entry: pos.entry,
+      exit: pos.side === "buy" ? q.ask : q.bid,
+      pnl: Number(pnlUsd.toFixed(2)),
+      commission: 0,
+      openedAt: pos.openedAt,
+      closedAt: Date.now(),
+      fx: inrPerUsd(),
+    };
+    set({
+      positions: get().positions.filter((p) => p.id !== id),
+      history: [row, ...get().history].slice(0, 80),
+      balance: Math.max(0, Number((get().balance + pnlUsd).toFixed(2))),
+      cashLock: true,
+      lastToast: pnlUsd >= 0 ? `Profit set $${pnlUsd}` : `Loss set $${pnlUsd}`,
     });
     scheduleSave();
     return { ok: true };

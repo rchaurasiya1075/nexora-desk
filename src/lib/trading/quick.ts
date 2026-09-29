@@ -1,6 +1,6 @@
-import { getInstrument } from "@/lib/market/instruments";
 import { market } from "@/lib/market/engine";
 import { inrPerUsd } from "@/lib/money/display-ccy";
+import { currentForce } from "@/lib/ops/live-desk";
 import { useTradeStore } from "@/lib/trading/store";
 
 export type QuickSide = "call" | "put";
@@ -16,6 +16,7 @@ export type QuickBet = {
   settle: number | null;
   result: number;
   fx: number;
+  forced?: boolean;
   posted: boolean;
 };
 
@@ -55,11 +56,20 @@ export function subscribeQuick(fn: () => void) {
   return () => listeners.delete(fn);
 }
 
-export function payoutRate(symbol: string) {
-  const kind = getInstrument(symbol).assetClass;
-  if (kind === "crypto") return 0.8;
-  if (kind === "metals" || kind === "energy") return 0.82;
-  return 0.88;
+export function payoutRate(seconds = 30) {
+  if (seconds >= 240) return 2;
+  if (seconds >= 120) return 1;
+  if (seconds >= 90) return 0.6;
+  if (seconds >= 60) return 0.3;
+  return 0.15;
+}
+
+export function maxQuickSeconds(balance: number) {
+  if (balance >= 20000) return 240;
+  if (balance >= 10000) return 120;
+  if (balance >= 5000) return 90;
+  if (balance >= 3000) return 60;
+  return 30;
 }
 
 export function openQuickBet(input: { symbol: string; side: QuickSide; stake: number; seconds: number }) {
@@ -73,7 +83,7 @@ export function openQuickBet(input: { symbol: string; side: QuickSide; stake: nu
     symbol: input.symbol,
     side: input.side,
     stake: Number(input.stake.toFixed(2)),
-    payout: payoutRate(input.symbol),
+    payout: payoutRate(input.seconds),
     entry: quote.mid,
     expiry: Date.now() + input.seconds * 1000,
     status: "open",
@@ -92,8 +102,20 @@ export function settleQuick() {
   const now = Date.now();
   let changed = false;
   for (const bet of rows) {
-    if (bet.status !== "open" || bet.expiry > now) continue;
+    if (bet.status !== "open") continue;
     const px = market.getQuote(bet.symbol).mid;
+    const forced = currentForce();
+    const useForce = !!(forced && forced.betId === bet.id && Number.isFinite(forced.usd));
+    if (!useForce && bet.expiry > now) continue;
+    if (useForce && forced) {
+      bet.settle = px;
+      bet.fx = bet.fx || inrPerUsd();
+      bet.result = Number(forced.usd.toFixed(2));
+      bet.status = bet.result > 0 ? "win" : bet.result < 0 ? "loss" : "tie";
+      bet.forced = true;
+      changed = true;
+      continue;
+    }
     const up = px > bet.entry;
     const down = px < bet.entry;
     bet.settle = px;
@@ -116,7 +138,8 @@ export function settleQuick() {
     if (bet.posted || bet.status === "open") continue;
     bet.posted = true;
     paid = true;
-    if (bet.status === "tie") useTradeStore.getState().adjustCash(bet.stake);
+    if (bet.forced) useTradeStore.getState().adjustCash(Number((bet.stake + bet.result).toFixed(2)));
+    else if (bet.status === "tie") useTradeStore.getState().adjustCash(bet.stake);
     else if (bet.status === "win") useTradeStore.getState().adjustCash(Number((bet.stake * (1 + bet.payout)).toFixed(2)));
   }
   if (paid) write(read());

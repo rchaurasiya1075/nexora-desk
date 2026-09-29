@@ -1,6 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Briefcase, Home, LineChart, User, ArrowLeftRight } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { currentForce, publishLive, watchMyForce, watchMyKyc, type KycStatus } from "@/lib/ops/live-desk";
+import { P2pChat } from "@/components/trade/deposit-desk";
 import { market } from "@/lib/market/engine";
 import { settleOptions } from "@/lib/trading/options-book";
 import { settleQuick } from "@/lib/trading/quick";
@@ -25,6 +27,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   });
   const openCount = useTradeStore((s) => s.positions.length);
   const { user, signOutDesk } = useDeskSession();
+  const [kyc, setKyc] = useState<KycStatus>("verified");
+  const [kycOpen, setKycOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => watchMyForce(), []);
+  useEffect(() => watchMyKyc(setKyc), []);
+  useEffect(() => {
+    if (kyc === "unverified") setKycOpen(true);
+  }, [kyc]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const force = currentForce();
+      if (!force) return;
+      const book = useTradeStore.getState();
+      if (book.positions.some((pos) => pos.id === force.betId)) {
+        book.forceResult(force.betId, force.usd);
+        if (user) void publishLive({ name: user.name, email: user.email, deskUserId: user.id, trade: null });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [user]);
 
   useEffect(() => {
     market.start();
@@ -115,6 +138,32 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </ul>
       </nav>
+      {kycOpen && kyc !== "verified" && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 md:items-center">
+          <div className="w-full max-w-sm rounded-2xl bg-[#16181d] p-5">
+            <p className="text-sm font-medium text-sell">
+              {kyc === "pending" ? "KYC pending" : "KYC not done"}
+            </p>
+            <p className="mt-2 text-sm text-muted">Kindly fill KYC for security purposes.</p>
+            <div className="mt-4 flex gap-2">
+              <Link to="/account" className="flex h-10 flex-1 items-center justify-center rounded-full bg-white text-sm text-[#111214]" onClick={() => setKycOpen(false)}>
+                Fill KYC
+              </Link>
+              <button type="button" className="h-10 flex-1 rounded-full bg-white/10 text-sm" onClick={() => setKycOpen(false)}>
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <button type="button" className="fixed bottom-24 right-4 z-40 rounded-full bg-white px-4 py-2 text-xs font-medium text-[#111214] md:bottom-6" onClick={() => setChatOpen((v) => !v)}>
+        Customer support
+      </button>
+      {chatOpen && (
+        <div className="fixed bottom-36 right-4 z-40 w-[min(100vw-2rem,22rem)] rounded-2xl border border-white/10 bg-[#12141a] p-3 md:bottom-16">
+          <P2pChat />
+        </div>
+      )}
     </div>
   );
 }

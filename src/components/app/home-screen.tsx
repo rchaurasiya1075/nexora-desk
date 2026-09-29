@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Bell, Search, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EMPTY_PAY, watchPayDesk, type PayDesk } from "@/lib/ops/p2p";
 import { market } from "@/lib/market/engine";
 import { INSTRUMENTS, getInstrument, type Instrument } from "@/lib/market/instruments";
 import { useMarketTick } from "@/lib/market/use-market";
@@ -22,6 +23,8 @@ export function HomeScreen() {
   const [filter, setFilter] = useState<"all" | "forex" | "gold" | "gainers" | "inr">("all");
   const ccy = useDisplayCcy();
   const [story, setStory] = useState<"news" | "movers" | "gold" | null>(null);
+  const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
+  useEffect(() => watchPayDesk(setPay), []);
   const floating = positions.reduce((sum, pos) => {
     const q = market.getQuote(pos.symbol);
     return sum + positionPnl(pos, q.bid, q.ask);
@@ -79,14 +82,25 @@ export function HomeScreen() {
           Today's P/L: {showSigned(pnl, ccy)} ({formatPct(pnlPct)})
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link to="/trade" className="flex h-12 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-accent-fg active:scale-[0.98]">
+          <Link to="/trade" search={{ desk: "quick" }} className="flex h-12 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-accent-fg active:scale-[0.98]">
             Quick Trade
           </Link>
-          <Link to="/trade" search={{ view: "positions" }} className="flex h-12 items-center justify-center rounded-xl bg-bg-subtle text-sm font-medium active:scale-[0.98]">
-            Open Positions
+          <Link to="/trade" search={{ desk: "swing" }} className="flex h-12 items-center justify-center rounded-xl bg-bg-subtle text-sm font-medium active:scale-[0.98]">
+            Swing Trade
           </Link>
         </div>
       </section>
+
+      {(pay.eventTitle || pay.eventImage) && (
+        <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-bg-elevated">
+          {pay.eventImage && <img src={pay.eventImage} alt="" className="max-h-52 w-full object-cover" />}
+          <div className="p-4">
+            <p className="text-[11px] uppercase tracking-wide text-subtle">Daily event</p>
+            <p className="mt-1 text-lg font-medium">{pay.eventTitle}</p>
+            {pay.eventText && <p className="mt-1 text-sm text-muted">{pay.eventText}</p>}
+          </div>
+        </section>
+      )}
 
       <h2 className="mt-6 text-xs uppercase tracking-[0.16em] text-subtle">Market stories</h2>
       <div className="mt-3 flex gap-4">

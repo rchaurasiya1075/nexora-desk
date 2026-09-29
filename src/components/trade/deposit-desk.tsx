@@ -162,6 +162,11 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
         <p className="mt-4 text-[11px] uppercase tracking-wide text-subtle">Crypto deposit · {pay.cryptoAsset}</p>
         <p className="mt-2 font-medium break-all">{pay.cryptoAddress}</p>
         <p className="text-muted">{pay.cryptoNetwork} only</p>
+        {pay.cryptoLink && <a className="mt-2 block text-sm underline" href={pay.cryptoLink} target="_blank" rel="noreferrer">Crypto payment link</a>}
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {pay.upiQr && <figure><img src={pay.upiQr} alt="UPI QR" className="w-full rounded-lg bg-white" /><figcaption className="mt-1 text-[11px] text-muted">UPI QR</figcaption></figure>}
+          {pay.cryptoQr && <figure><img src={pay.cryptoQr} alt="Crypto QR" className="w-full rounded-lg bg-white" /><figcaption className="mt-1 text-[11px] text-muted">Crypto QR</figcaption></figure>}
+        </div>
       </div>
 
       <div className="mt-4 grid gap-2">
@@ -325,7 +330,7 @@ function withCrypto(rows: PaymentMethod[]) {
   return [...rows, ...builtinMethods().filter((row) => row.kind === "crypto")];
 }
 
-function P2pChat() {
+export function P2pChat() {
   const { user } = useDeskSession();
   const [text, setText] = useState("");
   const [lines, setLines] = useState<ChatLine[]>([]);

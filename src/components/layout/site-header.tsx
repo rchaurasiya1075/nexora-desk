@@ -5,6 +5,7 @@ import { AuthSlot } from "@/components/auth/auth-slot";
 import { bootTheme } from "@/lib/profile/prefs";
 import { cn } from "@/lib/utils";
 import { useOps } from "@/lib/ops/use-ops";
+import { EMPTY_PAY, watchPayDesk } from "@/lib/ops/p2p";
 
 const LINKS = [
   { to: "/markets", label: "Markets" },
@@ -111,15 +112,15 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
 }
 
 export function SiteFooter() {
+  const [pay, setPay] = useState(EMPTY_PAY);
+  useEffect(() => watchPayDesk(setPay), []);
   return (
     <footer className="border-t border-border bg-bg">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 md:flex-row md:justify-between">
         <div className="max-w-sm">
           <Logo />
           <p className="mt-4 text-sm text-muted">
-            Trade Smarter. Move Faster. MORGAN MAX is a desk for global
-            markets — forex, gold, crypto, indices and shares. Funding is
-            admin-approved paper credit, not a live broker payout.
+            {pay.footer || "Trade Smarter. Move Faster. MORGAN MAX is a desk for global markets — forex, gold, crypto, indices and shares."}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-8 text-sm">

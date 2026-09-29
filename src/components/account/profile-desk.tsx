@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Check, Copy, Plus } from "lucide-react";
-import { DepositDesk } from "@/components/trade/deposit-desk";
+import { DepositDesk, P2pChat } from "@/components/trade/deposit-desk";
+import { EMPTY_PAY, watchPayDesk, type PayDesk } from "@/lib/ops/p2p";
+import { applyPromo, ensurePromo, submitKyc, watchMyKyc } from "@/lib/ops/live-desk";
 import { QrCode } from "@/components/trade/qr-code";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,9 +53,11 @@ export function ProfileDesk() {
   const [money, setMoney] = useState<null | "in" | "out">(null);
   const [deposits, setDeposits] = useState<DepositRequest[]>([]);
   const [tick, setTick] = useState(0);
+  const [remoteKyc, setRemoteKyc] = useState<"unverified" | "pending" | "verified">("unverified");
   const seen = useRef<Map<number, string>>(new Map());
 
   useEffect(() => subscribeControl(() => setTick((n) => n + 1)), []);
+  useEffect(() => watchMyKyc(setRemoteKyc), []);
 
   useEffect(() => {
     if (!user) return;
@@ -107,9 +111,9 @@ export function ProfileDesk() {
     prefs.currency === "INR" ? formatMoney(usd * rate, "INR") : formatMoney(usd);
   const restricted = accountStatus === "frozen";
   const kyc =
-    prefs.kycId === "verified" && prefs.kycAddress === "verified"
+    remoteKyc === "verified" || (prefs.kycId === "verified" && prefs.kycAddress === "verified")
       ? "verified"
-      : prefs.kycId === "pending" || prefs.kycAddress === "pending"
+      : remoteKyc === "pending" || prefs.kycId === "pending" || prefs.kycAddress === "pending"
         ? "pending"
         : "unverified";
   const withdrawals = readControl().withdrawals.filter((row) => row.userId === user.id);
@@ -150,8 +154,8 @@ export function ProfileDesk() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Status tone={kyc === "verified" ? "buy" : kyc === "pending" ? "muted" : "sell"}>
-            {kyc === "verified" ? "KYC verified" : kyc === "pending" ? "KYC pending" : "KYC unverified"}
+          <Status tone={kyc === "verified" ? "buy" : "sell"}>
+            {kyc === "verified" ? "KYC Successful" : kyc === "pending" ? "KYC pending" : "KYC not done"}
           </Status>
           <Status tone={restricted ? "sell" : "buy"}>{restricted ? "Restricted" : "Active"}</Status>
           <Status tone="muted">{traderTier(snap.equity)}</Status>
@@ -194,6 +198,7 @@ export function ProfileDesk() {
           <Info label="Email" value={user.email} />
           <Info label="Mobile" value={prefs.phone || "Not added"} />
           <Info label="Risk profile" value={`${prefs.risk} trader`} />
+          <PromoBox name={user.name} />
         </div>
       )}
 
@@ -224,7 +229,7 @@ export function ProfileDesk() {
         <Payouts prefs={prefs} onChange={update} />
       )}
 
-      {section === "kyc" && <Kyc prefs={prefs} onChange={update} />}
+      {section === "kyc" && <Kyc prefs={prefs} name={user.name} onChange={update} />}
 
       {section === "security" && (
         <Security
@@ -257,7 +262,8 @@ export function ProfileDesk() {
         </SheetContent>
       </Sheet>
       <Sheet open={money === "out"} onOpenChange={(open) => !open && setMoney(null)}>
-        <SheetContent title="Withdraw" side="right">
+        <SheetContent title="Withdraw" side="right" className="overflow-y-auto">
+          <DeskPayNote />
           <WithdrawForm
             max={Math.max(snap.free, 0)}
             destination={primaryDestination(prefs)}
@@ -274,6 +280,7 @@ export function ProfileDesk() {
               setSection("history");
             }}
           />
+          <P2pChat />
         </SheetContent>
       </Sheet>
       <p className="sr-only">{tick}</p>
@@ -456,7 +463,7 @@ function Payouts({ prefs, onChange }: { prefs: ProfilePrefs; onChange: (next: Pr
   );
 }
 
-function Kyc({ prefs, onChange }: { prefs: ProfilePrefs; onChange: (next: ProfilePrefs) => void }) {
+function Kyc({ prefs, name, onChange }: { prefs: ProfilePrefs; name: string; onChange: (next: ProfilePrefs) => void }) {
   const [last4, setLast4] = useState(prefs.idLast4);
   const [address, setAddress] = useState(prefs.address);
   const [kind, setKind] = useState(prefs.idKind);
@@ -482,6 +489,12 @@ function Kyc({ prefs, onChange }: { prefs: ProfilePrefs; onChange: (next: Profil
           kycId: "pending",
           kycAddress: "pending",
         });
+        void submitKyc({
+          name: name || "Trader",
+          phone: phone.trim(),
+          idLast4: last4.replace(/\D/g, "").slice(-4),
+          address: address.trim(),
+        }).catch(() => undefined);
         toast.success("KYC submitted. Status stays pending until the desk reviews it.");
       }}
     >
@@ -961,4 +974,37 @@ function toneClass(status: string) {
   if (["approved", "completed", "profit", "verified"].includes(status)) return "text-buy";
   if (["rejected", "loss", "cancelled"].includes(status)) return "text-sell";
   return "text-muted";
+}
+
+function DeskPayNote() {
+  const [pay, setPay] = useState<PayDesk>(EMPTY_PAY);
+  useEffect(() => watchPayDesk(setPay), []);
+  return (
+    <div className="mb-4 text-sm">
+      <p>Account holder name: <strong>{pay.holder}</strong></p>
+      <p>Account number: <strong>{pay.number}</strong></p>
+      <p className="mt-1 text-muted">Crypto withdrawal · {pay.cryptoAsset} {pay.cryptoNetwork}</p>
+      <p className="break-all">{pay.cryptoAddress}</p>
+    </div>
+  );
+}
+
+function PromoBox({ name }: { name: string }) {
+  const [code, setCode] = useState("");
+  const [mine, setMine] = useState("");
+  return (
+    <div className="rounded-xl bg-bg-elevated p-4 shadow-[var(--shadow-border)] lg:col-span-3">
+      <p className="font-medium">Promo code · 5% commission</p>
+      <p className="mt-1 text-sm text-muted">Share your code. When a customer deposits with it, you receive 5%.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" variant="outline" onClick={() => void ensurePromo(name).then(setMine).catch((err) => toast.error(err instanceof Error ? err.message : "Could not create a code"))}>
+          {mine ? mine : "Generate my code"}
+        </Button>
+        <Input className="max-w-[12rem]" placeholder="Friend's code" value={code} onChange={(e) => setCode(e.target.value)} />
+        <Button type="button" onClick={() => void applyPromo(code).then(() => toast.success("Promo applied")).catch((err) => toast.error(err instanceof Error ? err.message : "Invalid code"))}>
+          Apply
+        </Button>
+      </div>
+    </div>
+  );
 }

@@ -9,11 +9,14 @@ import { useMarketTick } from "@/lib/market/use-market";
 import { positionPnl, requiredMargin, useTradeStore, type HoldStyle, type OrderKind, type Side } from "@/lib/trading/store";
 import { formatPct, formatPrice } from "@/lib/utils";
 import { inrPerUsd, showMoney, showSigned, useDisplayCcy } from "@/lib/money/display-ccy";
+import { useDeskSession } from "@/lib/firebase/session";
+import { publishLive } from "@/lib/ops/live-desk";
 
 const LEVS = [1, 10, 50, 100];
 
-export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: Side }) {
+export function TradeScreen({ symbol, side: intent, mode = "forex" }: { symbol?: string; side?: Side; mode?: "forex" | "swing" }) {
   useMarketTick();
+  const { user } = useDeskSession();
   const navigate = useNavigate();
   const selected = useTradeStore((s) => s.selected);
   const select = useTradeStore((s) => s.select);
@@ -97,6 +100,14 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
       }
       const price = pending === "buy" ? quote.ask : quote.bid;
       setPlaced({ side: pending, price, amount: usd });
+      if (user) {
+        void publishLive({
+          name: user.name,
+          email: user.email,
+          deskUserId: user.id,
+          trade: { id: res.id, kind: "swing", symbol: selected, side: pending, stake: usd, entry: price, expiry: 0 },
+        });
+      }
     } else {
       const price = Number(trigger);
       if (!Number.isFinite(price) || price <= 0) {
@@ -144,10 +155,10 @@ export function TradeScreen({ symbol, side: intent }: { symbol?: string; side?: 
             ))}
           </select>
           <p className="num text-2xl font-medium leading-none">{formatPrice(quote.mid, inst.digits)}</p>
-          <p className={quote.changePct >= 0 ? "text-xs text-buy" : "text-xs text-sell"}>{formatPct(quote.changePct)}</p>
+          <p className={Math.abs(floating) < 0.005 ? "text-xs text-muted" : floating >= 0 ? "text-xs text-buy" : "text-xs text-sell"}>{formatPct(quote.changePct)} · this trade {Math.abs(floating) < 0.005 ? "flat" : showSigned(floating, ccy)}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] uppercase tracking-wide text-subtle">Balance</p>
+          <p className="text-[10px] uppercase tracking-wide text-subtle">{user?.name || "Trader"} · {mode === "swing" ? "Swing" : "Forex"}</p>
           <p className="num text-base">{showMoney(balance, ccy)}</p>
           <button type="button" onClick={() => setFull((v) => !v)} className="mt-1 text-xs text-muted underline">
             {full ? "Exit" : "Full chart"}

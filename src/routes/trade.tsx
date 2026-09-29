@@ -24,7 +24,7 @@ export const Route = createFileRoute("/trade")({
     if (search.view === "positions") out.view = "positions";
     if (typeof search.symbol === "string") out.symbol = search.symbol.toUpperCase();
     if (search.side === "buy" || search.side === "sell") out.side = search.side;
-    if (search.desk === "forex" || search.desk === "quick" || search.desk === "copy" || search.desk === "options") {
+    if (search.desk === "forex" || search.desk === "quick" || search.desk === "swing" || search.desk === "copy" || search.desk === "options") {
       out.desk = search.desk;
     }
     return out;
@@ -52,7 +52,7 @@ export function TradePage() {
             ) : mode === "options" ? (
               <OptionsScreen />
             ) : (
-              <TradeScreen symbol={symbol} side={side} />
+              <TradeScreen symbol={symbol} side={side} mode={mode === "swing" ? "swing" : "forex"} />
             )}
           </>
         )}
