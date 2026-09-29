@@ -1,6 +1,6 @@
 export type StaffRole = "admin";
 
-export type MethodKind = "upi" | "qr" | "bank" | "swift";
+export type MethodKind = "upi" | "qr" | "bank" | "swift" | "crypto";
 
 export type DepositStatus = "pending" | "approved" | "rejected";
 

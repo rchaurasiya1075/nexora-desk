@@ -807,7 +807,10 @@ function WithdrawForm({
   onSubmit: (amount: number, note: string) => void;
 }) {
   const [amount, setAmount] = useState("");
-  const [note, setNote] = useState(destination);
+  const [mode, setMode] = useState<"bank" | "crypto">("bank");
+  const [holder, setHolder] = useState("");
+  const [account, setAccount] = useState("");
+  const [wallet, setWallet] = useState("");
   return (
     <form
       className="grid gap-2"
@@ -822,12 +825,35 @@ function WithdrawForm({
           toast.error("Amount is above available margin.");
           return;
         }
-        onSubmit(value, note);
+        if (mode === "bank") {
+          if (holder.trim().length < 2 || account.replace(/\s/g, "").length < 6) {
+            toast.error("Enter the account holder name and account number.");
+            return;
+          }
+          onSubmit(value, `Bank · ${holder.trim()} · ${account.replace(/\s/g, "")}${destination ? ` · ${destination}` : ""}`);
+          return;
+        }
+        if (wallet.trim().length < 8) {
+          toast.error("Enter the crypto wallet address.");
+          return;
+        }
+        onSubmit(value, `Crypto withdrawal · USDT TRC-20 · ${wallet.trim()}`);
       }}
     >
       <p className="text-sm text-muted">Available {formatMoney(max)}. Payout waits for admin approval.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" className={`h-10 rounded-lg text-sm ${mode === "bank" ? "bg-white text-[#111214]" : "bg-white/10"}`} onClick={() => setMode("bank")}>Bank</button>
+        <button type="button" className={`h-10 rounded-lg text-sm ${mode === "crypto" ? "bg-white text-[#111214]" : "bg-white/10"}`} onClick={() => setMode("crypto")}>Crypto withdrawal</button>
+      </div>
       <Input inputMode="decimal" placeholder="Amount in USD" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      <Input placeholder="UPI, bank or wallet" value={note} onChange={(e) => setNote(e.target.value)} />
+      {mode === "bank" ? (
+        <>
+          <Input placeholder="Account holder name" value={holder} onChange={(e) => setHolder(e.target.value)} />
+          <Input placeholder="Account number" value={account} onChange={(e) => setAccount(e.target.value)} />
+        </>
+      ) : (
+        <Input placeholder="USDT TRC-20 wallet address" value={wallet} onChange={(e) => setWallet(e.target.value)} />
+      )}
       <Button type="submit">Request withdrawal</Button>
     </form>
   );

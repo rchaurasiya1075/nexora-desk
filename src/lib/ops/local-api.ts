@@ -19,7 +19,7 @@ import {
   requireUser,
 } from "@/lib/desk/local-store";
 
-const KINDS = new Set<MethodKind>(["upi", "qr", "bank", "swift"]);
+const KINDS = new Set<MethodKind>(["upi", "qr", "bank", "swift", "crypto"]);
 
 function dataOf<T>(input?: { data?: T } | T): T {
   if (input && typeof input === "object" && "data" in (input as object)) {

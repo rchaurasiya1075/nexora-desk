@@ -9,6 +9,19 @@ export function builtinCurrencies(): CurrencyRow[] {
   ];
 }
 
+export const DESK_BANK = {
+  holder: "MORGAN MAX",
+  bank: "HDFC Bank",
+  number: "50100012345678",
+  ifsc: "HDFC0001234",
+};
+
+export const DESK_CRYPTO = {
+  asset: "USDT",
+  network: "TRC-20",
+  address: "DESK-USDT-TRC20-MORGAN-MAX",
+};
+
 export function builtinMethods(): PaymentMethod[] {
   return [
     {
@@ -43,6 +56,20 @@ export function builtinMethods(): PaymentMethod[] {
       },
       enabled: true,
       sortOrder: 2,
+    },
+    {
+      id: 5,
+      kind: "crypto",
+      title: "Crypto deposit · USDT",
+      currency: "USD",
+      details: {
+        accountName: DESK_BANK.holder,
+        accountNumber: DESK_CRYPTO.address,
+        note: `${DESK_CRYPTO.asset} ${DESK_CRYPTO.network} only`,
+        payload: DESK_CRYPTO.address,
+      },
+      enabled: true,
+      sortOrder: 4,
     },
   ];
 }

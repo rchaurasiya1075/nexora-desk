@@ -65,9 +65,9 @@ export function requiredMargin(inst: Instrument, lots: number, price: number, le
 
 export function positionPnl(pos: Position, bid: number, ask: number) {
   const inst = getInstrument(pos.symbol);
-  const close = pos.side === "buy" ? bid : ask;
+  const mark = pos.side === "buy" ? ask : bid;
   const dir = pos.side === "buy" ? 1 : -1;
-  return (close - pos.entry) * dir * inst.contractSize * pos.lots;
+  return (mark - pos.entry) * dir * inst.contractSize * pos.lots;
 }
 
 export function pipValue(inst: Instrument, lots: number) {
@@ -252,12 +252,21 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
   setHydrated: () => set({ hydrated: true }),
   applyBook: (book) => {
     market.setPricing(book.pricing);
-    const keepCash = get().cashLock;
+    const cur = get();
+    if (cur.hydrated && cur.history.length >= (book.history?.length || 0)) {
+      set({
+        balance: cur.cashLock ? cur.balance : book.balance,
+        status: book.status,
+        hydrated: true,
+      });
+      return;
+    }
+    const keepCash = cur.cashLock;
     set({
-      balance: keepCash ? get().balance : book.balance,
+      balance: keepCash ? cur.balance : book.balance,
       status: book.status,
       pricing: book.pricing,
-      selected: book.selected || get().selected,
+      selected: book.selected || cur.selected,
       positions: book.positions,
       pending: book.pending,
       history: book.history,
@@ -362,7 +371,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
     const inst = getInstrument(pos.symbol);
     const q = market.getQuote(pos.symbol);
     const pnl = positionPnl({ ...pos, lots: closeLots }, q.bid, q.ask);
-    const exit = pos.side === "buy" ? q.bid : q.ask;
+    const exit = pos.side === "buy" ? q.ask : q.bid;
     const commission = commissionCost(inst, closeLots, get().pricing);
     const row: HistoryRow = {
       id: uid(),
@@ -496,7 +505,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
         continue;
       }
       const pnl = positionPnl(pos, bid, ask);
-      const exit = pos.side === "buy" ? bid : ask;
+      const exit = pos.side === "buy" ? ask : bid;
       history = [
         {
           id: uid(),
@@ -541,7 +550,7 @@ export const useTradeStore = create<TradeState>()((set, get) => ({
             side: pos.side,
             lots: pos.lots,
             entry: pos.entry,
-            exit: pos.side === "buy" ? q.bid : q.ask,
+            exit: pos.side === "buy" ? q.ask : q.bid,
             pnl,
             commission: 0,
             openedAt: pos.openedAt,

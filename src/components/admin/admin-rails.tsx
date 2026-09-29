@@ -269,6 +269,7 @@ function MethodEditor({
             <option value="qr">QR</option>
             <option value="bank">Bank</option>
             <option value="swift">SWIFT / wire</option>
+            <option value="crypto">Crypto</option>
           </select>
         </div>
         <div>

@@ -24,9 +24,11 @@ export function PositionsScreen() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <h1 className="text-3xl font-medium">Positions</h1>
-      <p className={`mt-2 text-sm ${floating >= 0 ? "text-buy" : "text-sell"}`}>
-        Open P/L {showSigned(floating, ccy)}
-      </p>
+      {positions.length > 0 && (
+        <p className={`mt-2 text-sm ${floating >= 0 ? "text-buy" : "text-sell"}`}>
+          Open P/L {showSigned(floating, ccy)}
+        </p>
+      )}
       <div className="mt-4 grid grid-cols-2 rounded-2xl bg-bg-subtle p-1 text-sm">
         <button type="button" onClick={() => setTab("open")} className={`h-10 rounded-xl ${tab === "open" ? "bg-bg-elevated text-fg gold-ring" : "text-muted"}`}>
           Open positions

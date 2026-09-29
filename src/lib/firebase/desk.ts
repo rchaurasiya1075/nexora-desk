@@ -32,7 +32,7 @@ import { MAX_BALANCE, MAX_REQUEST_USD, MIN_REQUEST_USD } from "@/lib/trading/con
 import type { AccountBook, LedgerRow } from "@/lib/firebase/account-types";
 
 const META = doc(db, "desk", "meta");
-const KINDS = new Set<MethodKind>(["upi", "qr", "bank", "swift"]);
+const KINDS = new Set<MethodKind>(["upi", "qr", "bank", "swift", "crypto"]);
 
 function emptyBook(): AccountBook {
   return {

@@ -11,7 +11,7 @@ import {
   listMyDeposits,
   listPaymentMethods,
 } from "@/lib/ops/api";
-import { builtinCurrencies, builtinMethods } from "@/lib/ops/rails";
+import { builtinCurrencies, builtinMethods, DESK_BANK, DESK_CRYPTO } from "@/lib/ops/rails";
 import { formatAmount, toUsd, upiUri } from "@/lib/ops/money";
 import type { CurrencyRow, DepositRequest, PaymentMethod } from "@/lib/ops/types";
 import { useTradeStore } from "@/lib/trading/store";
@@ -47,7 +47,7 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
       listMyDeposits(),
     ]);
     setCurrencies(c.length ? c.filter((x) => x.enabled) : builtinCurrencies());
-    setMethods(m.length ? m : builtinMethods());
+    setMethods(withCrypto(m.length ? m : builtinMethods()));
     setMine(r);
     setMethodId((id) => (id && m.some((x) => x.id === id) ? id : m[0]?.id ?? null));
     const approved = r.find((row) => row.status === "approved");
@@ -57,7 +57,7 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     void reload().catch(() => {
       setCurrencies(builtinCurrencies());
-      setMethods(builtinMethods());
+      setMethods(withCrypto(builtinMethods()));
     });
   }, []);
 
@@ -146,6 +146,17 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
       <p className="text-sm text-muted">
         Cash on account: <span className="num text-fg">{formatMoney(balance)}</span>
       </p>
+      <div className="mt-4 rounded-xl bg-bg-subtle p-4 text-sm">
+        <p className="text-[11px] uppercase tracking-wide text-subtle">Bank</p>
+        <p className="mt-2">Account holder name</p>
+        <p className="font-medium">{DESK_BANK.holder}</p>
+        <p className="mt-2">Account number</p>
+        <p className="font-medium">{DESK_BANK.number}</p>
+        <p className="mt-1 text-muted">{DESK_BANK.bank} · {DESK_BANK.ifsc}</p>
+        <p className="mt-4 text-[11px] uppercase tracking-wide text-subtle">Crypto deposit · {DESK_CRYPTO.asset}</p>
+        <p className="mt-2 font-medium break-all">{DESK_CRYPTO.address}</p>
+        <p className="text-muted">{DESK_CRYPTO.network} only</p>
+      </div>
 
       <div className="mt-4 grid gap-2">
         {methods.map((m) => (
@@ -218,10 +229,15 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
                 <CopyRow label="Bank" value={method.details.bankName} copied={copied} onCopy={copy} />
               )}
               {method.details.accountName && (
-                <CopyRow label="Name" value={method.details.accountName} copied={copied} onCopy={copy} />
+                <CopyRow label="Account holder name" value={method.details.accountName} copied={copied} onCopy={copy} />
               )}
               {method.details.accountNumber && (
-                <CopyRow label="Account" value={method.details.accountNumber} copied={copied} onCopy={copy} />
+                <CopyRow
+                  label={method.kind === "crypto" ? "Crypto address" : "Account number"}
+                  value={method.details.accountNumber}
+                  copied={copied}
+                  onCopy={copy}
+                />
               )}
               {method.details.ifsc && (
                 <CopyRow label="IFSC" value={method.details.ifsc} copied={copied} onCopy={copy} />
@@ -281,6 +297,7 @@ export function DepositDesk({ compact = false }: { compact?: boolean }) {
           </ul>
         )}
       </section>
+      <P2pChat />
       <p className="mt-4 text-[12px] text-subtle">
         Paper desk only. Admin approval credits a demo wallet. This is not a
         licensed forex deposit, UPI collection app, or FEMA-compliant broker.
@@ -293,7 +310,64 @@ function MethodIcon({ kind }: { kind: string }) {
   const cls = "size-4 text-muted";
   if (kind === "upi") return <Smartphone className={cls} />;
   if (kind === "qr") return <QrIcon className={cls} />;
+  if (kind === "crypto") return <span className="text-xs text-muted">₮</span>;
   return <Landmark className={cls} />;
+}
+
+function withCrypto(rows: PaymentMethod[]) {
+  if (rows.some((row) => row.kind === "crypto")) return rows;
+  return [...rows, ...builtinMethods().filter((row) => row.kind === "crypto")];
+}
+
+function P2pChat() {
+  const [text, setText] = useState("");
+  const [lines, setLines] = useState<{ from: "you" | "agent"; text: string }[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = JSON.parse(localStorage.getItem("sikkaaa.p2p.chat") || "[]") as { from: "you" | "agent"; text: string }[];
+      return Array.isArray(saved) ? saved.slice(-30) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  function push(next: { from: "you" | "agent"; text: string }[]) {
+    const kept = next.slice(-30);
+    setLines(kept);
+    localStorage.setItem("sikkaaa.p2p.chat", JSON.stringify(kept));
+  }
+
+  function send() {
+    const msg = text.trim();
+    if (msg.length < 1) return;
+    const reply = /[0-9]{6,}/.test(msg)
+      ? "UTR received. The P2P agent will match it and an admin will credit the account."
+      : `Send the amount to ${DESK_BANK.holder}, account ${DESK_BANK.number}, ${DESK_BANK.bank}. Crypto deposit: ${DESK_CRYPTO.asset} ${DESK_CRYPTO.network} ${DESK_CRYPTO.address}. Then paste the UTR or tx hash here.`;
+    push([...lines, { from: "you", text: msg }, { from: "agent", text: reply }]);
+    setText("");
+  }
+
+  return (
+    <section className="mt-8 rounded-xl border border-border p-4">
+      <p className="text-[11px] uppercase tracking-wide text-subtle">P2P</p>
+      <h3 className="mt-1 text-lg font-medium">Chat with P2P agent</h3>
+      <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+        {lines.length === 0 && (
+          <p className="text-sm text-muted">Ask for the account name, account number, or the crypto address. Paste your UTR here after you pay.</p>
+        )}
+        {lines.map((line, i) => (
+          <p key={i} className={`rounded-xl px-3 py-2 text-sm ${line.from === "you" ? "bg-white/10" : "bg-bg-subtle text-muted"}`}>
+            <span className="block text-[10px] uppercase tracking-wide">{line.from === "you" ? "You" : "P2P agent"}</span>
+            {line.text}
+          </p>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Input value={text} placeholder="Message the agent" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
+        <Button type="button" variant="outline" onClick={send}>Send</Button>
+      </div>
+    </section>
+  );
 }
 
 function CopyRow({
