@@ -102,42 +102,65 @@ export function QuickLiveChart({
       ctx.fillRect(0, 0, w, h);
 
       const inst = getInstrument(symbol);
-      const future = expiry && expiry > now ? Math.min(expiry - now + 4_000, 36_000) : 8_000;
-      const t0 = now - 36_000;
-      const t1 = now + future;
-      const visible = kept.filter((point) => point.t >= t0);
-      const marks = visible.map((point) => point.p);
+      const candles = market.getCandles(symbol, "1m").slice(-20);
+      const future = expiry && expiry > now ? expiry - now + 8_000 : 50_000;
+      const t0 = candles[0]?.t ?? now - 18 * 60_000;
+      const t1 = Math.max(now + future, (candles[candles.length - 1]?.t ?? now) + 60_000);
+      const marks = candles.flatMap((candle) => [candle.h, candle.l]);
       marks.push(shown);
-      const center = marks.reduce((sum, level) => sum + level, 0) / marks.length || quote.mid;
-      let peak = 0;
-      for (const level of marks) peak = Math.max(peak, Math.abs(level - center));
-      if (entry && entry > 0) peak = Math.max(peak, Math.abs(entry - center));
-      if (peak < inst.pip * 0.04) peak = inst.pip * 0.04;
-      const swing = inst.pip * 2;
-      const wave = (level: number) => center + ((level - center) / peak) * swing;
-      const min = center - swing * 1.45;
-      const max = center + swing * 1.45;
+      if (entry && entry > 0) marks.push(entry);
+      let min = Math.min(...marks);
+      let max = Math.max(...marks);
+      const minSpan = Math.max(quote.mid * 0.00045, inst.pip * 10);
+      if (max - min < minSpan) {
+        const mid = (max + min) / 2 || quote.mid;
+        min = mid - minSpan / 2;
+        max = mid + minSpan / 2;
+      }
+      const pad = (max - min) * 0.1;
+      min -= pad;
+      max += pad;
 
       const padL = 8;
-      const padR = 16;
-      const padT = 18;
-      const padB = 26;
+      const padR = 74;
+      const padT = 12;
+      const padB = 22;
       const plotW = w - padL - padR;
       const plotH = h - padT - padB;
       const xOf = (t: number) => padL + ((t - t0) / (t1 - t0)) * plotW;
-      const yOf = (level: number) => padT + ((max - wave(level)) / (max - min)) * plotH;
+      const yOf = (level: number) => padT + ((max - level) / (max - min)) * plotH;
+      const bodyW = Math.max(3, ((60_000 / (t1 - t0)) * plotW) * 0.62);
 
-      ctx.strokeStyle = "rgba(255,255,255,0.05)";
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
       ctx.font = "11px Inter, sans-serif";
       for (let i = 0; i <= 4; i++) {
-        const y = padT + (plotH * i) / 4;
+        const level = min + ((max - min) * i) / 4;
+        const y = yOf(level);
         ctx.beginPath();
         ctx.moveTo(padL, y);
         ctx.lineTo(w - padR, y);
         ctx.stroke();
+        ctx.fillText(formatPrice(level, inst.digits), w - padR + 6, y + 4);
       }
 
+      candles.forEach((candle) => {
+        const x = xOf(candle.t + 30_000);
+        const up = candle.c >= candle.o;
+        const color = up ? "#1f9d55" : "#e23b3b";
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, yOf(candle.h));
+        ctx.lineTo(x, yOf(candle.l));
+        ctx.stroke();
+        const top = yOf(Math.max(candle.o, candle.c));
+        const bot = yOf(Math.min(candle.o, candle.c));
+        ctx.fillRect(x - bodyW / 2, top, bodyW, Math.max(1.5, bot - top));
+      });
+
+      const visible = kept.filter((point) => point.t >= t0 && point.t <= t1);
       if (entry && entry > 0 && openedAt && expiry) {
         const x1 = xOf(openedAt);
         const x2 = xOf(expiry);
@@ -257,24 +280,36 @@ export function QuickLiveChart({
         ctx.arc(tx, ty, 4, 0, Math.PI * 2);
         ctx.fill();
         const label = formatPrice(shown, inst.digits);
-        ctx.fillStyle = "#2f80ed";
+        const pillW = 68;
+        ctx.fillStyle = shown >= (entry || quote.open) ? "#1f9d55" : "#e23b3b";
         ctx.beginPath();
-        ctx.roundRect(8, ty - 12, 78, 24, 12);
+        ctx.roundRect(w - padR + 2, ty - 11, pillW, 22, 4);
         ctx.fill();
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(label, 16, ty + 4);
+        ctx.fillText(label, w - padR + 6, ty + 4);
+        if (entry && entry > 0) {
+          const ey = yOf(entry);
+          ctx.fillStyle = "#35d07f";
+          ctx.fillRect(w - padR + 2, ey - 9, pillW, 18);
+          ctx.fillStyle = "#06210f";
+          ctx.fillText(formatPrice(entry, inst.digits), w - padR + 6, ey + 4);
+        }
         void tip;
       }
 
-      const start = new Date(t0);
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
-      ctx.fillText(`${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`, padL, h - 8);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const stamp = (t: number) => {
+        const d = new Date(t);
+        return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      };
+      const first = candles[0]?.t ?? t0;
+      const opened = new Date(first);
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = "11px Inter, sans-serif";
+      ctx.fillText(`${opened.getDate()} ${months[opened.getMonth()]}  ${stamp(first)}`, padL, h - 6);
+      if (candles.length > 8) ctx.fillText(stamp(candles[Math.floor(candles.length / 2)]!.t), xOf(candles[Math.floor(candles.length / 2)]!.t), h - 6);
       const live = new Date(now);
-      ctx.fillText(`${String(live.getHours()).padStart(2, "0")}:${String(live.getMinutes()).padStart(2, "0")}:${String(live.getSeconds()).padStart(2, "0")}`, w / 2 - 28, h - 8);
-      if (expiry) {
-        const end = new Date(expiry);
-        ctx.fillText(`${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}:${String(end.getSeconds()).padStart(2, "0")}`, Math.min(w - 70, xOf(expiry) - 24), h - 8);
-      }
+      ctx.fillText(`${stamp(now)}:${String(live.getSeconds()).padStart(2, "0")}`, Math.min(w - padR - 52, xOf(now) - 18), h - 6);
 
       frame = requestAnimationFrame(draw);
     };
