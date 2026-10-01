@@ -16,6 +16,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarketsRouteImport } from './routes/markets'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as SupportDeskRouteImport } from './routes/support-desk'
 import { Route as TradeRouteImport } from './routes/trade'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
@@ -54,6 +56,16 @@ const PricingRoute = PricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportDeskRoute = SupportDeskRouteImport.update({
+  id: '/support-desk',
+  path: '/support-desk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TradeRoute = TradeRouteImport.update({
   id: '/trade',
   path: '/trade',
@@ -73,6 +85,8 @@ export interface FileRoutesByFullPath {
   '/markets': typeof MarketsRoute
   '/news': typeof NewsRoute
   '/pricing': typeof PricingRoute
+  '/support': typeof SupportRoute
+  '/support-desk': typeof SupportDeskRoute
   '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
 }
@@ -84,6 +98,8 @@ export interface FileRoutesByTo {
   '/markets': typeof MarketsRoute
   '/news': typeof NewsRoute
   '/pricing': typeof PricingRoute
+  '/support': typeof SupportRoute
+  '/support-desk': typeof SupportDeskRoute
   '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
 }
@@ -96,6 +112,8 @@ export interface FileRoutesById {
   '/markets': typeof MarketsRoute
   '/news': typeof NewsRoute
   '/pricing': typeof PricingRoute
+  '/support': typeof SupportRoute
+  '/support-desk': typeof SupportDeskRoute
   '/trade': typeof TradeRoute
   '/admin/login': typeof AdminLoginRoute
 }
@@ -109,6 +127,8 @@ export interface FileRouteTypes {
     | '/markets'
     | '/news'
     | '/pricing'
+    | '/support'
+    | '/support-desk'
     | '/trade'
     | '/admin/login'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +140,8 @@ export interface FileRouteTypes {
     | '/markets'
     | '/news'
     | '/pricing'
+    | '/support'
+    | '/support-desk'
     | '/trade'
     | '/admin/login'
   id:
@@ -131,6 +153,8 @@ export interface FileRouteTypes {
     | '/markets'
     | '/news'
     | '/pricing'
+    | '/support'
+    | '/support-desk'
     | '/trade'
     | '/admin/login'
   fileRoutesById: FileRoutesById
@@ -143,6 +167,8 @@ export interface RootRouteChildren {
   MarketsRoute: typeof MarketsRoute
   NewsRoute: typeof NewsRoute
   PricingRoute: typeof PricingRoute
+  SupportRoute: typeof SupportRoute
+  SupportDeskRoute: typeof SupportDeskRoute
   TradeRoute: typeof TradeRoute
 }
 
@@ -197,6 +223,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support-desk': {
+      id: '/support-desk'
+      path: '/support-desk'
+      fullPath: '/support-desk'
+      preLoaderRoute: typeof SupportDeskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trade': {
       id: '/trade'
       path: '/trade'
@@ -232,6 +272,8 @@ const rootRouteChildren: RootRouteChildren = {
   MarketsRoute: MarketsRoute,
   NewsRoute: NewsRoute,
   PricingRoute: PricingRoute,
+  SupportRoute: SupportRoute,
+  SupportDeskRoute: SupportDeskRoute,
   TradeRoute: TradeRoute,
 }
 export const routeTree = rootRouteImport

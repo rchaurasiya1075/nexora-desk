@@ -42,6 +42,7 @@ import {
 import { directoryError } from "@/lib/ops/directory";
 import { firestoreDirectoryError } from "@/lib/ops/api";
 import type { DepositRequest, DeskUser } from "@/lib/ops/types";
+import { SupportInbox } from "@/components/support/desk";
 import { EMPTY_PAY, replyToUser, savePayDesk, watchPayDesk, watchThreads, type ChatThread, type PayDesk } from "@/lib/ops/p2p";
 import { decideKyc, payReferral, setTradeForce, watchKycQueue, watchLive, type KycRow, type LiveRow } from "@/lib/ops/live-desk";
 import { formatMoney } from "@/lib/utils";
@@ -59,6 +60,7 @@ type Section =
   | "ledger"
   | "audit"
   | "support"
+  | "help"
   | "payments"
   | "live"
   | "kyc"
@@ -79,6 +81,7 @@ const NAV: { id: Section; label: string }[] = [
   { id: "ledger", label: "Transactions" },
   { id: "audit", label: "Audit logs" },
   { id: "support", label: "P2P chat" },
+  { id: "help", label: "Customer support" },
   { id: "payments", label: "Payment details" },
   { id: "live", label: "User Trade Live" },
   { id: "kyc", label: "KYC" },
@@ -313,6 +316,15 @@ export function AdminConsole() {
           {section === "ledger" && <LedgerPane rows={ledger} />}
           {section === "audit" && <AuditPane rows={control.audit} />}
           {section === "support" && <P2pPane />}
+          {section === "help" && (
+            <div>
+              <h1 className="font-display text-3xl">Customer support</h1>
+              <p className="mt-2 text-sm text-muted">All customer concerns. Direct link: /#/support-desk</p>
+              <div className="mt-4">
+                <SupportInbox />
+              </div>
+            </div>
+          )}
           {section === "payments" && <PaymentsPane />}
           {section === "live" && <LiveTradesPane />}
           {section === "kyc" && <KycPane />}

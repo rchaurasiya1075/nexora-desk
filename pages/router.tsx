@@ -19,6 +19,8 @@ import { AccountPage } from "@/routes/account";
 import { MarketsPage } from "@/routes/markets";
 import { NewsPage } from "@/routes/news";
 import { PricingPage } from "@/routes/pricing";
+import { SupportPage } from "@/routes/support";
+import { SupportDeskPage } from "@/routes/support-desk";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -56,6 +58,8 @@ const routeTree = rootRoute.addChildren([
   page("/markets", MarketsPage),
   page("/news", NewsPage),
   page("/pricing", PricingPage),
+  page("/support", SupportPage),
+  page("/support-desk", SupportDeskPage),
 ]);
 
 export const router = createRouter({

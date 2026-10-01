@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Check, Copy, Plus } from "lucide-react";
 import { DepositDesk, P2pChat } from "@/components/trade/deposit-desk";
@@ -842,6 +843,7 @@ function Support({ userId, email }: { userId: string; email: string }) {
       >
         <h2 className="font-display text-2xl">Help</h2>
         <p className="mt-2 text-sm text-muted">supportus@sikkaaa.in</p>
+        <Link to="/support" className="mt-3 inline-block text-sm text-accent">Open support chat</Link>
         <textarea
           className="mt-3 h-28 w-full rounded-sm border border-border bg-transparent px-3 py-2 text-sm"
           placeholder="What do you need?"
