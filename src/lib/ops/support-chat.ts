@@ -51,7 +51,7 @@ function asLines(raw: unknown): SupportLine[] {
       id: String(line.id || Math.random().toString(36).slice(2)),
       from: line.from,
       text,
-      image: image || undefined,
+      ...(image ? { image } : {}),
       at: String(line.at || ""),
     });
   }
@@ -61,7 +61,15 @@ function asLines(raw: unknown): SupportLine[] {
 function fit(lines: SupportLine[]) {
   let rows = lines.slice(-20);
   while (rows.length > 1 && JSON.stringify(rows).length > 700_000) rows = rows.slice(1);
-  return rows;
+  return rows.map((line) => {
+    const row: SupportLine = { id: line.id, from: line.from, text: line.text || "", at: line.at || "" };
+    if (line.image) row.image = line.image;
+    return row;
+  });
+}
+
+function plain<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 export async function sendSupport(input: { name: string; email: string; userId: string; text: string; image?: string; phone?: string }) {
@@ -75,19 +83,19 @@ export async function sendSupport(input: { name: string; email: string; userId: 
     id: `s${Date.now().toString(36)}`,
     from: "user",
     text,
-    image: image || undefined,
     at: new Date().toISOString(),
   };
+  if (image) line.image = image;
   await setDoc(
     ref,
-    {
-      name: input.name.slice(0, 40),
-      email: input.email.slice(0, 80),
+    plain({
+      name: (input.name || "Trader").slice(0, 40),
+      email: (input.email || "").slice(0, 80),
       phone: (input.phone || "").slice(0, 20),
-      deskUserId: input.userId,
+      deskUserId: input.userId || user.uid,
       supportChat: fit([...asLines(snap.data()?.supportChat), line]),
       supportTyping: "",
-    },
+    }),
     { merge: true },
   );
 }
@@ -104,11 +112,11 @@ export async function replySupport(userId: string, text: string, image?: string)
     id: `a${Date.now().toString(36)}`,
     from: "admin",
     text: clean,
-    image: photo || undefined,
     at: new Date().toISOString(),
   };
+  if (photo) line.image = photo;
   bag[userId] = fit([...asLines(bag[userId]), line]);
-  await setDoc(ref, { supportReplies: bag, role: "admin" }, { merge: true });
+  await setDoc(ref, plain({ supportReplies: bag, role: "admin" }), { merge: true });
 }
 
 export function watchSupportThreads(onThreads: (rows: SupportThread[]) => void) {
@@ -168,7 +176,7 @@ async function patchDesk(userId: string, patch: DeskMeta) {
   const snap = await getDoc(ref);
   const bag = { ...((snap.data()?.supportDesk as Record<string, DeskMeta> | undefined) || {}) };
   bag[userId] = { ...bag[userId], ...patch };
-  await setDoc(ref, { supportDesk: bag, role: "admin" }, { merge: true });
+  await setDoc(ref, plain({ supportDesk: bag, role: "admin" }), { merge: true });
 }
 
 export function markSupportRead(userId: string) {
