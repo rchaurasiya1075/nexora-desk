@@ -9,6 +9,7 @@ import { useTradeStore } from "@/lib/trading/store";
 import { Logo } from "@/components/layout/site-header";
 import { CurrencyToggle } from "@/lib/money/display-ccy";
 import { useDeskSession } from "@/lib/firebase/session";
+import { SupportWidget } from "@/components/support/desk";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -136,6 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </ul>
       </nav>
+      <SupportWidget />
     </div>
   );
 }

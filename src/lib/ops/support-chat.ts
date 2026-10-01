@@ -14,8 +14,29 @@ export type SupportThread = {
   userId: string;
   name: string;
   email: string;
+  phone: string;
+  createdAt: string;
+  balance: number | null;
   lines: SupportLine[];
+  status: "pending" | "resolved";
+  note: string;
+  unread: number;
+  customerSeen: string;
+  typing: boolean;
 };
+
+type DeskMeta = {
+  readAt?: string;
+  status?: "pending" | "resolved";
+  note?: string;
+  typing?: string;
+};
+
+function fresh(iso?: string) {
+  if (!iso) return false;
+  const at = new Date(iso).getTime();
+  return Number.isFinite(at) && Date.now() - at < 8_000;
+}
 
 function asLines(raw: unknown): SupportLine[] {
   if (!Array.isArray(raw)) return [];
@@ -43,7 +64,7 @@ function fit(lines: SupportLine[]) {
   return rows;
 }
 
-export async function sendSupport(input: { name: string; email: string; userId: string; text: string; image?: string }) {
+export async function sendSupport(input: { name: string; email: string; userId: string; text: string; image?: string; phone?: string }) {
   const text = input.text.trim().slice(0, 1000);
   const image = input.image && input.image.startsWith("data:image/") ? input.image : "";
   if (!text && !image) return;
@@ -62,8 +83,10 @@ export async function sendSupport(input: { name: string; email: string; userId: 
     {
       name: input.name.slice(0, 40),
       email: input.email.slice(0, 80),
+      phone: (input.phone || "").slice(0, 20),
       deskUserId: input.userId,
       supportChat: fit([...asLines(snap.data()?.supportChat), line]),
+      supportTyping: "",
     },
     { merge: true },
   );
@@ -91,22 +114,47 @@ export async function replySupport(userId: string, text: string, image?: string)
 export function watchSupportThreads(onThreads: (rows: SupportThread[]) => void) {
   return onSnapshot(collection(db, "users"), (snap) => {
     const replies = new Map<string, SupportLine[]>();
+    const meta = new Map<string, DeskMeta>();
     snap.forEach((row) => {
       const bag = row.data().supportReplies as Record<string, unknown> | undefined;
-      if (!bag) return;
-      for (const [userId, lines] of Object.entries(bag)) replies.set(userId, asLines(lines));
+      if (bag) {
+        for (const [userId, lines] of Object.entries(bag)) replies.set(userId, asLines(lines));
+      }
+      const desk = row.data().supportDesk as Record<string, DeskMeta> | undefined;
+      if (!desk) return;
+      for (const [userId, value] of Object.entries(desk)) {
+        const prev = meta.get(userId) || {};
+        meta.set(userId, {
+          readAt: (value.readAt || "") > (prev.readAt || "") ? value.readAt : prev.readAt,
+          status: value.status || prev.status,
+          note: value.note ?? prev.note,
+          typing: (value.typing || "") > (prev.typing || "") ? value.typing : prev.typing,
+        });
+      }
     });
     const threads: SupportThread[] = [];
     snap.forEach((row) => {
-      const own = asLines(row.data().supportChat);
+      const data = row.data();
+      const own = asLines(data.supportChat);
       const extra = replies.get(row.id) || [];
       const lines = [...own, ...extra].sort((a, b) => a.at.localeCompare(b.at));
       if (!lines.length) return;
+      const info = meta.get(row.id) || {};
+      const readAt = info.readAt || "";
+      const unread = lines.filter((line) => line.from === "user" && line.at > readAt).length;
       threads.push({
         userId: row.id,
-        name: String(row.data().name || "Trader"),
-        email: String(row.data().email || ""),
+        name: String(data.name || "Trader"),
+        email: String(data.email || ""),
+        phone: String(data.phone || ""),
+        createdAt: String(data.createdAt || ""),
+        balance: typeof data.balance === "number" ? data.balance : null,
         lines,
+        status: info.status === "resolved" ? "resolved" : "pending",
+        note: String(info.note || ""),
+        unread,
+        customerSeen: String(data.supportSeen || ""),
+        typing: fresh(String(data.supportTyping || "")),
       });
     });
     threads.sort((a, b) => (b.lines.at(-1)?.at || "").localeCompare(a.lines.at(-1)?.at || ""));
@@ -114,21 +162,61 @@ export function watchSupportThreads(onThreads: (rows: SupportThread[]) => void) 
   }, () => onThreads([]));
 }
 
-export function watchMySupport(onLines: (rows: SupportLine[]) => void) {
+async function patchDesk(userId: string, patch: DeskMeta) {
+  const user = await writer();
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  const bag = { ...((snap.data()?.supportDesk as Record<string, DeskMeta> | undefined) || {}) };
+  bag[userId] = { ...bag[userId], ...patch };
+  await setDoc(ref, { supportDesk: bag, role: "admin" }, { merge: true });
+}
+
+export function markSupportRead(userId: string) {
+  return patchDesk(userId, { readAt: new Date().toISOString() });
+}
+
+export function setSupportStatus(userId: string, status: "pending" | "resolved") {
+  return patchDesk(userId, { status });
+}
+
+export function saveSupportNote(userId: string, note: string) {
+  return patchDesk(userId, { note: note.slice(0, 500) });
+}
+
+export function setAdminTyping(userId: string, on: boolean) {
+  return patchDesk(userId, { typing: on ? new Date().toISOString() : "" });
+}
+
+export async function markCustomerSeen() {
+  const user = await writer();
+  await setDoc(doc(db, "users", user.uid), { supportSeen: new Date().toISOString() }, { merge: true });
+}
+
+export async function setCustomerTyping(on: boolean) {
+  const user = await writer();
+  await setDoc(doc(db, "users", user.uid), { supportTyping: on ? new Date().toISOString() : "" }, { merge: true });
+}
+
+export function watchMySupport(onLines: (rows: SupportLine[]) => void, onTyping?: (typing: boolean) => void) {
   return onSnapshot(collection(db, "users"), (snap) => {
     const me = firebaseAuth.currentUser?.uid || "";
     if (!me) {
       onLines([]);
+      onTyping?.(false);
       return;
     }
     let own: SupportLine[] = [];
     let extra: SupportLine[] = [];
+    let typing = false;
     snap.forEach((row) => {
       if (row.id === me) own = asLines(row.data().supportChat);
       const bag = row.data().supportReplies as Record<string, unknown> | undefined;
       if (bag?.[me]) extra = extra.concat(asLines(bag[me]));
+      const desk = row.data().supportDesk as Record<string, DeskMeta> | undefined;
+      if (desk?.[me] && fresh(desk[me].typing)) typing = true;
     });
     onLines([...own, ...extra].sort((a, b) => a.at.localeCompare(b.at)));
+    onTyping?.(typing);
   }, () => onLines([]));
 }
 

@@ -316,15 +316,7 @@ export function AdminConsole() {
           {section === "ledger" && <LedgerPane rows={ledger} />}
           {section === "audit" && <AuditPane rows={control.audit} />}
           {section === "support" && <P2pPane />}
-          {section === "help" && (
-            <div>
-              <h1 className="font-display text-3xl">Customer support</h1>
-              <p className="mt-2 text-sm text-muted">Complaints raised on the customer site appear here. Reply with the solution. Direct link: /#/support-desk</p>
-              <div className="mt-4">
-                <SupportInbox />
-              </div>
-            </div>
-          )}
+          {section === "help" && <SupportInbox />}
           {section === "payments" && <PaymentsPane />}
           {section === "live" && <LiveTradesPane />}
           {section === "kyc" && <KycPane />}
