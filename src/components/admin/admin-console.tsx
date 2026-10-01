@@ -43,6 +43,7 @@ import { directoryError } from "@/lib/ops/directory";
 import { firestoreDirectoryError } from "@/lib/ops/api";
 import type { DepositRequest, DeskUser } from "@/lib/ops/types";
 import { SupportInbox } from "@/components/support/desk";
+import { SupportStaffPane } from "@/components/support/staff-pane";
 import { EMPTY_PAY, replyToUser, savePayDesk, watchPayDesk, watchThreads, type ChatThread, type PayDesk } from "@/lib/ops/p2p";
 import { decideKyc, payReferral, setTradeForce, watchKycQueue, watchLive, type KycRow, type LiveRow } from "@/lib/ops/live-desk";
 import { formatMoney } from "@/lib/utils";
@@ -61,6 +62,7 @@ type Section =
   | "audit"
   | "support"
   | "help"
+  | "agents"
   | "payments"
   | "live"
   | "kyc"
@@ -82,6 +84,7 @@ const NAV: { id: Section; label: string }[] = [
   { id: "audit", label: "Audit logs" },
   { id: "support", label: "P2P chat" },
   { id: "help", label: "Customer support" },
+  { id: "agents", label: "Support logins" },
   { id: "payments", label: "Payment details" },
   { id: "live", label: "User Trade Live" },
   { id: "kyc", label: "KYC" },
@@ -317,6 +320,7 @@ export function AdminConsole() {
           {section === "audit" && <AuditPane rows={control.audit} />}
           {section === "support" && <P2pPane />}
           {section === "help" && <SupportInbox />}
+          {section === "agents" && <SupportStaffPane />}
           {section === "payments" && <PaymentsPane />}
           {section === "live" && <LiveTradesPane />}
           {section === "kyc" && <KycPane />}
