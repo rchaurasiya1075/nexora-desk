@@ -17,7 +17,8 @@ import { optionBets, subscribeOptions } from "@/lib/trading/options-book";
 import { quickBets, subscribeQuick } from "@/lib/trading/quick";
 import { listMyDeposits } from "@/lib/ops/api";
 import { watchDeposits } from "@/lib/firebase/desk";
-import { addSupport, readControl, requestWithdrawal, subscribeControl } from "@/lib/ops/control-store";
+import { readControl, requestWithdrawal, subscribeControl } from "@/lib/ops/control-store";
+import { sendSupport, watchMySupport, type SupportLine } from "@/lib/ops/support-chat";
 import type { DepositRequest } from "@/lib/ops/types";
 import {
   loadPrefs,
@@ -308,7 +309,7 @@ export function ProfileDesk() {
         />
       )}
 
-      {section === "support" && <Support userId={user.id} email={user.email} />}
+      {section === "support" && <Support userId={user.id} name={user.name} email={user.email} />}
 
       <Sheet open={money === "in"} onOpenChange={(open) => !open && setMoney(null)}>
         <SheetContent title="Add money" side="right" className="overflow-y-auto">
@@ -827,39 +828,54 @@ function History({
   );
 }
 
-function Support({ userId, email }: { userId: string; email: string }) {
+function Support({ userId, name, email }: { userId: string; name: string; email: string }) {
   const [msg, setMsg] = useState("");
+  const [lines, setLines] = useState<SupportLine[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => watchMySupport(setLines), []);
+
+  async function submit(e: { preventDefault: () => void }) {
+    e.preventDefault();
+    if (!msg.trim() || busy) return;
+    setBusy(true);
+    try {
+      await sendSupport({ name: name || email, email, userId, text: msg.trim() });
+      setMsg("");
+      toast.success("Complaint sent. The solution will show here.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Complaint was not sent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
-      <form
-        className="rounded-xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!msg.trim()) return;
-          addSupport({ userId, email, message: msg.trim() });
-          setMsg("");
-          toast.success("Message sent to the desk.");
-        }}
-      >
-        <h2 className="font-display text-2xl">Help</h2>
-        <p className="mt-2 text-sm text-muted">supportus@sikkaaa.in</p>
-        <Link to="/support" className="mt-3 inline-block text-sm text-accent">Open support chat</Link>
+      <form className="rounded-xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]" onSubmit={(e) => void submit(e)}>
+        <h2 className="font-display text-2xl">Raise a complaint</h2>
+        <p className="mt-2 text-sm text-muted">This goes to the admin customer-support panel. Their reply shows below.</p>
         <textarea
           className="mt-3 h-28 w-full rounded-sm border border-border bg-transparent px-3 py-2 text-sm"
-          placeholder="What do you need?"
+          placeholder="Write the problem"
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
         />
-        <Button className="mt-3" type="submit" variant="outline">
-          Send ticket
+        <Button className="mt-3" type="submit" variant="outline" disabled={busy}>
+          {busy ? "Sending…" : "Send complaint"}
         </Button>
+        <Link to="/support" className="mt-3 block text-sm text-accent">Open full support chat</Link>
       </form>
-      <section className="rounded-xl bg-bg-elevated p-4 text-sm text-muted shadow-[var(--shadow-border)]">
-        <h2 className="font-display text-2xl text-fg">Terms</h2>
-        <p className="mt-3">
-          MORGAN MAX is a desk. Deposits request admin-approved USD. Withdrawals do not
-          move live bank funds until an operator processes them. Prices can be pinned by the desk.
-        </p>
+      <section className="rounded-xl bg-bg-elevated p-4 text-sm shadow-[var(--shadow-border)]">
+        <h2 className="font-display text-2xl">Solution</h2>
+        <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+          {lines.map((line) => (
+            <li key={line.id} className="rounded-lg bg-bg-subtle px-3 py-2">
+              <p className="text-[10px] uppercase text-subtle">{line.from === "admin" ? "Admin solution" : "Your complaint"}</p>
+              <p className="mt-1">{line.text}</p>
+            </li>
+          ))}
+          {lines.length === 0 && <li className="text-muted">No complaint yet.</li>}
+        </ul>
       </section>
     </div>
   );

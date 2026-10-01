@@ -25,8 +25,8 @@ export function SupportDeskPage() {
       <header className="mb-4 flex items-center justify-between">
         <div>
           <Logo compact />
-          <h1 className="mt-2 text-lg font-semibold">Customer support</h1>
-          <p className="text-xs text-muted">Every customer message, including photos, lands here.</p>
+          <h1 className="mt-2 text-lg font-semibold">Customer complaints</h1>
+          <p className="text-xs text-muted">A complaint from the website shows in this list. Send the solution in the reply.</p>
         </div>
         <Link to="/admin" className="text-sm text-muted">
           Admin desk

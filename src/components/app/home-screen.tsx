@@ -61,6 +61,9 @@ export function HomeScreen() {
         <p className="hidden text-sm text-muted lg:block">Home</p>
         <div className="flex items-center gap-1.5">
           <CurrencyToggle />
+          <Link to="/support" className="flex h-8 items-center rounded-full bg-bg-subtle px-2.5 text-[11px] font-medium">
+            Support
+          </Link>
           <Link to="/markets" className="flex size-8 items-center justify-center rounded-full bg-bg-subtle" aria-label="Search markets">
             <Search className="size-3.5" />
           </Link>

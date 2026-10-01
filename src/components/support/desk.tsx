@@ -34,7 +34,7 @@ function Bubbles({ lines, mine }: { lines: SupportLine[]; mine: "user" | "admin"
         const own = line.from === mine;
         return (
           <div key={line.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${own ? "ml-auto bg-[#00b386] text-white" : "bg-bg-subtle"}`}>
-            <p className={`text-[10px] ${own ? "text-white/80" : "text-subtle"}`}>{own ? "You" : line.from === "admin" ? "Support" : "Customer"} · {when(line.at)}</p>
+            <p className={`text-[10px] ${own ? "text-white/80" : "text-subtle"}`}>{own ? "You" : line.from === "admin" ? "Solution" : "Complaint"} · {when(line.at)}</p>
             {line.text && <p className="mt-1 whitespace-pre-wrap">{line.text}</p>}
             {line.image && <img src={line.image} alt="Shared" className="mt-2 max-h-56 rounded-lg" />}
           </div>
@@ -115,7 +115,7 @@ export function CustomerSupport() {
       <header className="flex items-center justify-between border-b border-border pb-3">
         <div>
           <Logo compact />
-          <p className="mt-1 text-sm text-muted">Customer support</p>
+          <p className="mt-1 text-sm text-muted">Raise a complaint. The admin reply shows in this chat.</p>
         </div>
         <Link to="/trade" className="text-sm text-muted">
           Back

@@ -88,6 +88,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="mt-auto px-3">
+          <Link to="/support" className="mb-3 block text-sm text-muted hover:text-fg">
+            Customer support
+          </Link>
           {user && <p className="truncate text-sm font-medium">{user.name || user.email}</p>}
           {user && (
             <button type="button" className="mt-2 text-left text-sm text-muted hover:text-fg" onClick={() => void signOutDesk()}>

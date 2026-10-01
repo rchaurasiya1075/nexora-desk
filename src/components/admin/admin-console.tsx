@@ -319,7 +319,7 @@ export function AdminConsole() {
           {section === "help" && (
             <div>
               <h1 className="font-display text-3xl">Customer support</h1>
-              <p className="mt-2 text-sm text-muted">All customer concerns. Direct link: /#/support-desk</p>
+              <p className="mt-2 text-sm text-muted">Complaints raised on the customer site appear here. Reply with the solution. Direct link: /#/support-desk</p>
               <div className="mt-4">
                 <SupportInbox />
               </div>
